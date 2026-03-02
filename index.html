@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Golf Ball Finder</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=DM+Mono:wght@300;400&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --green-deep: #1a2e1a;
+    --green-mid: #2d4a2d;
+    --green-light: #4a7c4a;
+    --fairway: #7ab87a;
+    --cream: #f5f0e8;
+    --gold: #c9a84c;
+    --white-ball: #f8f8f6;
+    --danger: #c0392b;
+  }
+
+  body {
+    background: var(--green-deep);
+    color: var(--cream);
+    font-family: 'DM Mono', monospace;
+    height: 100dvh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* HEADER */
+  header {
+    padding: 16px 20px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(180deg, rgba(0,0,0,0.4) 0%, transparent 100%);
+    position: relative;
+    z-index: 10;
+  }
+
+  .logo {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 22px;
+    font-weight: 300;
+    letter-spacing: 0.05em;
+    color: var(--cream);
+  }
+
+  .logo span {
+    color: var(--gold);
+    font-weight: 600;
+  }
+
+  .status-pill {
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 20px;
+    color: rgba(255,255,255,0.6);
+    transition: all 0.3s;
+  }
+
+  .status-pill.active {
+    border-color: var(--fairway);
+    color: var(--fairway);
+    background: rgba(122,184,122,0.1);
+  }
+
+  /* CAMERA AREA */
+  .camera-container {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+
+  #video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  #canvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+
+  /* DETECTIONS OVERLAY */
+  .detection {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    pointer-events: all;
+    animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  @keyframes popIn {
+    from { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+    to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  }
+
+  .detection-ring {
+    border-radius: 50%;
+    border: 2px solid var(--gold);
+    box-shadow: 0 0 0 1px rgba(201,168,76,0.3), 0 0 20px rgba(201,168,76,0.4);
+    animation: pulse 2s ease-in-out infinite;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 1px rgba(201,168,76,0.3), 0 0 20px rgba(201,168,76,0.4); }
+    50% { box-shadow: 0 0 0 4px rgba(201,168,76,0.15), 0 0 30px rgba(201,168,76,0.6); }
+  }
+
+  .detection-actions {
+    position: absolute;
+    bottom: -44px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    white-space: nowrap;
+  }
+
+  .btn-confirm, .btn-reject {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.15s, opacity 0.15s;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+  }
+
+  .btn-confirm {
+    background: var(--fairway);
+    color: white;
+  }
+
+  .btn-reject {
+    background: var(--danger);
+    color: white;
+  }
+
+  .btn-confirm:active, .btn-reject:active {
+    transform: scale(0.9);
+  }
+
+  /* SCAN LINE EFFECT */
+  .scan-line {
+    position: absolute;
+    left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    opacity: 0.5;
+    animation: scanDown 3s linear infinite;
+    pointer-events: none;
+  }
+
+  @keyframes scanDown {
+    0% { top: 0%; }
+    100% { top: 100%; }
+  }
+
+  /* CORNER BRACKETS */
+  .corner {
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    pointer-events: none;
+    opacity: 0.6;
+  }
+  .corner-tl { top: 12px; left: 12px; border-top: 2px solid var(--gold); border-left: 2px solid var(--gold); }
+  .corner-tr { top: 12px; right: 12px; border-top: 2px solid var(--gold); border-right: 2px solid var(--gold); }
+  .corner-bl { bottom: 12px; left: 12px; border-bottom: 2px solid var(--gold); border-left: 2px solid var(--gold); }
+  .corner-br { bottom: 12px; right: 12px; border-bottom: 2px solid var(--gold); border-right: 2px solid var(--gold); }
+
+  /* BOTTOM BAR */
+  .bottom-bar {
+    padding: 16px 20px;
+    background: linear-gradient(0deg, rgba(0,0,0,0.5) 0%, transparent 100%);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .stats {
+    display: flex;
+    gap: 20px;
+  }
+
+  .stat {
+    text-align: center;
+  }
+
+  .stat-number {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 26px;
+    font-weight: 600;
+    color: var(--gold);
+    line-height: 1;
+  }
+
+  .stat-label {
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.4);
+    margin-top: 2px;
+  }
+
+  .btn-scan {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: var(--gold);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 0 4px rgba(201,168,76,0.2), 0 4px 20px rgba(0,0,0,0.4);
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+
+  .btn-scan:active {
+    transform: scale(0.94);
+    box-shadow: 0 0 0 2px rgba(201,168,76,0.2);
+  }
+
+  .btn-scan svg {
+    width: 28px;
+    height: 28px;
+  }
+
+  .btn-scan.scanning {
+    background: var(--fairway);
+    animation: scanPulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes scanPulse {
+    0%, 100% { box-shadow: 0 0 0 4px rgba(122,184,122,0.2), 0 4px 20px rgba(0,0,0,0.4); }
+    50% { box-shadow: 0 0 0 10px rgba(122,184,122,0.15), 0 4px 20px rgba(0,0,0,0.4); }
+  }
+
+  /* START SCREEN */
+  .start-screen {
+    position: absolute;
+    inset: 0;
+    background: var(--green-deep);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 32px;
+    z-index: 100;
+    padding: 40px;
+  }
+
+  .start-icon {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background: rgba(201,168,76,0.1);
+    border: 1px solid rgba(201,168,76,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 48px;
+  }
+
+  .start-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 36px;
+    font-weight: 300;
+    text-align: center;
+    line-height: 1.2;
+    color: var(--cream);
+  }
+
+  .start-title span {
+    color: var(--gold);
+    font-weight: 600;
+    display: block;
+  }
+
+  .start-desc {
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    color: rgba(255,255,255,0.4);
+    text-align: center;
+    line-height: 1.8;
+    max-width: 280px;
+  }
+
+  .btn-start {
+    background: var(--gold);
+    color: var(--green-deep);
+    border: none;
+    padding: 16px 40px;
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    border-radius: 40px;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 20px rgba(201,168,76,0.3);
+  }
+
+  .btn-start:active {
+    transform: scale(0.96);
+  }
+
+  /* TOAST */
+  .toast {
+    position: absolute;
+    top: 70px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-20px);
+    background: rgba(0,0,0,0.8);
+    color: var(--cream);
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    opacity: 0;
+    transition: all 0.3s;
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 50;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  .toast.success { border-color: var(--fairway); color: var(--fairway); }
+  .toast.reject { border-color: var(--danger); color: #e74c3c; }
+
+  /* NO CAMERA */
+  .no-camera {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    background: var(--green-mid);
+    color: rgba(255,255,255,0.5);
+    font-size: 13px;
+    text-align: center;
+    padding: 40px;
+  }
+
+  .no-camera .icon { font-size: 48px; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+
+<!-- START SCREEN -->
+<div class="start-screen" id="startScreen">
+  <div class="start-icon">⛳</div>
+  <div class="start-title">Golf Ball<span>Finder</span></div>
+  <p class="start-desc">Aponta a câmara para o campo.<br>A app detecta bolas automaticamente.<br>Confirma ou rejeita cada detecção.</p>
+  <button class="btn-start" onclick="startCamera()">Iniciar câmara</button>
+</div>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">Golf<span>Finder</span></div>
+  <div class="status-pill" id="statusPill">A iniciar...</div>
+</header>
+
+<!-- CAMERA -->
+<div class="camera-container" id="cameraContainer">
+  <video id="video" autoplay playsinline muted></video>
+  <canvas id="canvas"></canvas>
+
+  <!-- Scan overlay -->
+  <div class="scan-line" id="scanLine" style="display:none"></div>
+
+  <!-- Corner brackets -->
+  <div class="corner corner-tl"></div>
+  <div class="corner corner-tr"></div>
+  <div class="corner corner-bl"></div>
+  <div class="corner corner-br"></div>
+
+  <!-- Detections rendered here -->
+  <div id="detectionsLayer"></div>
+
+  <!-- No camera fallback -->
+  <div class="no-camera" id="noCameraMsg" style="display:none">
+    <div class="icon">📷</div>
+    <div>Câmara não disponível.<br>Abre esta página no teu iPhone<br>e permite o acesso à câmara.</div>
+  </div>
+</div>
+
+<!-- BOTTOM BAR -->
+<div class="bottom-bar">
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-number" id="countFound">0</div>
+      <div class="stat-label">Confirmadas</div>
+    </div>
+    <div class="stat">
+      <div class="stat-number" id="countRejected">0</div>
+      <div class="stat-label">Rejeitadas</div>
+    </div>
+  </div>
+
+  <button class="btn-scan" id="btnScan" onclick="toggleScan()">
+    <!-- Camera icon -->
+    <svg viewBox="0 0 24 24" fill="none" stroke="#1a2e1a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+      <circle cx="12" cy="13" r="4"/>
+    </svg>
+  </button>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-number" id="countDetected">0</div>
+      <div class="stat-label">Detectadas</div>
+    </div>
+    <div class="stat">
+      <div class="stat-number" id="countPending">0</div>
+      <div class="stat-label">Pendentes</div>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+  let video, canvas, ctx;
+  let scanning = false;
+  let scanInterval = null;
+  let detections = [];
+  let detectionId = 0;
+  let stats = { found: 0, rejected: 0, detected: 0 };
+
+  async function startCamera() {
+    document.getElementById('startScreen').style.display = 'none';
+    video = document.getElementById('video');
+    canvas = document.getElementById('canvas');
+    ctx = canvas.getContext('2d');
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        }
+      });
+      video.srcObject = stream;
+      video.onloadedmetadata = () => {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        setStatus('Pronto para detectar', true);
+      };
+    } catch (e) {
+      document.getElementById('noCameraMsg').style.display = 'flex';
+      setStatus('Sem câmara', false);
+    }
+  }
+
+  function setStatus(text, active) {
+    const pill = document.getElementById('statusPill');
+    pill.textContent = text;
+    pill.className = 'status-pill' + (active ? ' active' : '');
+  }
+
+  function toggleScan() {
+    scanning = !scanning;
+    const btn = document.getElementById('btnScan');
+    const scanLine = document.getElementById('scanLine');
+
+    if (scanning) {
+      btn.classList.add('scanning');
+      scanLine.style.display = 'block';
+      setStatus('A detectar...', true);
+      scanInterval = setInterval(detectBalls, 1200);
+      detectBalls();
+    } else {
+      btn.classList.remove('scanning');
+      scanLine.style.display = 'none';
+      setStatus('Pausado', false);
+      clearInterval(scanInterval);
+    }
+  }
+
+  function detectBalls() {
+    if (!video || video.readyState < 2) return;
+
+    canvas.width = video.videoWidth || video.clientWidth;
+    canvas.height = video.videoHeight || video.clientHeight;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const candidates = findWhiteCircularRegions(imageData, canvas.width, canvas.height);
+
+    candidates.forEach(c => {
+      // Check if already have a detection close to this
+      const containerRect = document.getElementById('cameraContainer').getBoundingClientRect();
+      const px = (c.x / canvas.width) * containerRect.width;
+      const py = (c.y / canvas.height) * containerRect.height;
+
+      const tooClose = detections.some(d => {
+        const dx = d.px - px;
+        const dy = d.py - py;
+        return Math.sqrt(dx*dx + dy*dy) < 60;
+      });
+
+      if (!tooClose) {
+        addDetection(px, py, c.radius);
+      }
+    });
+  }
+
+  function findWhiteCircularRegions(imageData, width, height) {
+    const data = imageData.data;
+    const candidates = [];
+    const step = 8; // sample every 8px for performance
+    const minBrightness = 210;
+    const minSaturation = 0;
+    const maxSaturation = 35;
+
+    // Find bright white clusters
+    let clusters = [];
+    const visited = new Set();
+
+    for (let y = step; y < height - step; y += step) {
+      for (let x = step; x < width - step; x += step) {
+        const i = (y * width + x) * 4;
+        const r = data[i], g = data[i+1], b = data[i+2];
+        const brightness = (r + g + b) / 3;
+        const maxC = Math.max(r,g,b), minC = Math.min(r,g,b);
+        const saturation = maxC === 0 ? 0 : ((maxC - minC) / maxC) * 100;
+
+        if (brightness > minBrightness && saturation < maxSaturation) {
+          const key = `${Math.floor(x/20)}-${Math.floor(y/20)}`;
+          if (!visited.has(key)) {
+            visited.add(key);
+            // Check if there's a cluster nearby
+            let merged = false;
+            for (let c of clusters) {
+              if (Math.abs(c.cx - x) < 40 && Math.abs(c.cy - y) < 40) {
+                c.points.push({x, y});
+                c.cx = c.points.reduce((s,p) => s+p.x, 0) / c.points.length;
+                c.cy = c.points.reduce((s,p) => s+p.y, 0) / c.points.length;
+                merged = true;
+                break;
+              }
+            }
+            if (!merged) clusters.push({ cx: x, cy: y, points: [{x, y}] });
+          }
+        }
+      }
+    }
+
+    // Filter clusters that look like circular blobs (golf ball size)
+    clusters.forEach(c => {
+      if (c.points.length < 3) return;
+
+      // Estimate radius from spread of points
+      const spread = c.points.reduce((sum, p) => {
+        return sum + Math.sqrt((p.x - c.cx)**2 + (p.y - c.cy)**2);
+      }, 0) / c.points.length;
+
+      const radius = Math.max(spread * 1.4, 18);
+
+      // Golf ball on screen: typically 15-80px radius
+      if (radius > 12 && radius < 90) {
+        candidates.push({ x: c.cx, y: c.cy, radius });
+      }
+    });
+
+    return candidates.slice(0, 3); // max 3 per frame
+  }
+
+  function addDetection(px, py, radius) {
+    const id = ++detectionId;
+    const displayRadius = Math.max(Math.min(radius * 2.2, 80), 36);
+
+    detections.push({ id, px, py });
+    stats.detected++;
+    updateStats();
+
+    const layer = document.getElementById('detectionsLayer');
+    const el = document.createElement('div');
+    el.className = 'detection';
+    el.id = `det-${id}`;
+    el.style.left = px + 'px';
+    el.style.top = py + 'px';
+
+    el.innerHTML = `
+      <div class="detection-ring" style="width:${displayRadius*2}px;height:${displayRadius*2}px;">
+      </div>
+      <div class="detection-actions">
+        <button class="btn-confirm" onclick="confirmDetection(${id})" title="É uma bola de golfe">✓</button>
+        <button class="btn-reject" onclick="rejectDetection(${id})" title="Não é uma bola">✕</button>
+      </div>
+    `;
+
+    layer.appendChild(el);
+    updatePending();
+
+    // Auto-remove after 8s if no action
+    setTimeout(() => removeDetection(id, false), 8000);
+  }
+
+  function confirmDetection(id) {
+    stats.found++;
+    showToast('⛳ Bola confirmada!', 'success');
+    removeDetection(id, true);
+    updateStats();
+  }
+
+  function rejectDetection(id) {
+    stats.rejected++;
+    showToast('✕ Não é uma bola', 'reject');
+    removeDetection(id, true);
+    updateStats();
+  }
+
+  function removeDetection(id, animate) {
+    const el = document.getElementById(`det-${id}`);
+    if (!el) return;
+    detections = detections.filter(d => d.id !== id);
+
+    if (animate) {
+      el.style.transition = 'all 0.3s';
+      el.style.transform = 'translate(-50%, -50%) scale(0)';
+      el.style.opacity = '0';
+      setTimeout(() => el.remove(), 300);
+    } else {
+      el.remove();
+    }
+    updatePending();
+  }
+
+  function updateStats() {
+    document.getElementById('countFound').textContent = stats.found;
+    document.getElementById('countRejected').textContent = stats.rejected;
+    document.getElementById('countDetected').textContent = stats.detected;
+  }
+
+  function updatePending() {
+    document.getElementById('countPending').textContent = detections.length;
+  }
+
+  function showToast(msg, type) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = `toast ${type} show`;
+    setTimeout(() => t.className = 'toast', 2500);
+  }
+</script>
+</body>
+</html>
