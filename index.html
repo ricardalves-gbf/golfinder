@@ -16,7 +16,6 @@
     --fairway: #7ab87a;
     --cream: #f5f0e8;
     --gold: #c9a84c;
-    --white-ball: #f8f8f6;
     --danger: #c0392b;
   }
 
@@ -30,7 +29,6 @@
     flex-direction: column;
   }
 
-  /* HEADER */
   header {
     padding: 16px 20px 12px;
     display: flex;
@@ -48,11 +46,7 @@
     letter-spacing: 0.05em;
     color: var(--cream);
   }
-
-  .logo span {
-    color: var(--gold);
-    font-weight: 600;
-  }
+  .logo span { color: var(--gold); font-weight: 600; }
 
   .status-pill {
     font-size: 10px;
@@ -64,14 +58,9 @@
     color: rgba(255,255,255,0.6);
     transition: all 0.3s;
   }
+  .status-pill.active { border-color: var(--fairway); color: var(--fairway); background: rgba(122,184,122,0.1); }
+  .status-pill.warning { border-color: var(--gold); color: var(--gold); background: rgba(201,168,76,0.1); }
 
-  .status-pill.active {
-    border-color: var(--fairway);
-    color: var(--fairway);
-    background: rgba(122,184,122,0.1);
-  }
-
-  /* CAMERA AREA */
   .camera-container {
     flex: 1;
     position: relative;
@@ -85,32 +74,57 @@
     display: block;
   }
 
-  #canvas {
+  #canvas { display: none; }
+
+  .corner {
     position: absolute;
-    top: 0; left: 0;
-    width: 100%;
-    height: 100%;
+    width: 24px; height: 24px;
     pointer-events: none;
+    opacity: 0.5;
+    z-index: 5;
+  }
+  .corner-tl { top: 12px; left: 12px; border-top: 2px solid var(--gold); border-left: 2px solid var(--gold); }
+  .corner-tr { top: 12px; right: 12px; border-top: 2px solid var(--gold); border-right: 2px solid var(--gold); }
+  .corner-bl { bottom: 12px; left: 12px; border-bottom: 2px solid var(--gold); border-left: 2px solid var(--gold); }
+  .corner-br { bottom: 12px; right: 12px; border-bottom: 2px solid var(--gold); border-right: 2px solid var(--gold); }
+
+  /* Scan progress bar */
+  .scan-progress {
+    position: absolute;
+    bottom: 0; left: 0;
+    height: 2px;
+    background: var(--gold);
+    opacity: 0;
+    transition: width 0.1s linear;
+    z-index: 6;
+  }
+  .scan-progress.animating {
+    opacity: 0.6;
   }
 
-  /* DETECTIONS OVERLAY */
+  #detectionsLayer {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+  }
+
   .detection {
     position: absolute;
     transform: translate(-50%, -50%);
     pointer-events: all;
-    animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    animation: popIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
   @keyframes popIn {
-    from { transform: translate(-50%, -50%) scale(0); opacity: 0; }
-    to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    from { transform: translate(-50%, -50%) scale(0.3); opacity: 0; }
+    to   { transform: translate(-50%, -50%) scale(1); opacity: 1; }
   }
 
   .detection-ring {
     border-radius: 50%;
-    border: 2px solid var(--gold);
-    box-shadow: 0 0 0 1px rgba(201,168,76,0.3), 0 0 20px rgba(201,168,76,0.4);
-    animation: pulse 2s ease-in-out infinite;
+    border: 2.5px solid var(--gold);
+    box-shadow: 0 0 0 1px rgba(201,168,76,0.2), 0 0 16px rgba(201,168,76,0.5), inset 0 0 12px rgba(201,168,76,0.1);
+    animation: pulse 1.8s ease-in-out infinite;
     position: relative;
     display: flex;
     align-items: center;
@@ -118,266 +132,157 @@
   }
 
   @keyframes pulse {
-    0%, 100% { box-shadow: 0 0 0 1px rgba(201,168,76,0.3), 0 0 20px rgba(201,168,76,0.4); }
-    50% { box-shadow: 0 0 0 4px rgba(201,168,76,0.15), 0 0 30px rgba(201,168,76,0.6); }
+    0%,100% { box-shadow: 0 0 0 1px rgba(201,168,76,0.2), 0 0 16px rgba(201,168,76,0.5); }
+    50%      { box-shadow: 0 0 0 5px rgba(201,168,76,0.1), 0 0 28px rgba(201,168,76,0.7); }
+  }
+
+  .detection-label {
+    position: absolute;
+    top: -22px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--gold);
+    white-space: nowrap;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.8);
   }
 
   .detection-actions {
     position: absolute;
-    bottom: -44px;
+    bottom: -52px;
     left: 50%;
     transform: translateX(-50%);
     display: flex;
-    gap: 8px;
-    white-space: nowrap;
+    gap: 12px;
+    align-items: center;
   }
 
   .btn-confirm, .btn-reject {
-    width: 36px;
-    height: 36px;
+    width: 44px; height: 44px;
     border-radius: 50%;
     border: none;
     cursor: pointer;
-    font-size: 16px;
+    font-size: 18px;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: transform 0.15s, opacity 0.15s;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+    transition: transform 0.15s;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.5);
   }
+  .btn-confirm { background: var(--fairway); color: white; }
+  .btn-reject  { background: var(--danger);  color: white; }
+  .btn-confirm:active, .btn-reject:active { transform: scale(0.88); }
 
-  .btn-confirm {
-    background: var(--fairway);
-    color: white;
-  }
-
-  .btn-reject {
-    background: var(--danger);
-    color: white;
-  }
-
-  .btn-confirm:active, .btn-reject:active {
-    transform: scale(0.9);
-  }
-
-  /* SCAN LINE EFFECT */
-  .scan-line {
-    position: absolute;
-    left: 0; right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, var(--gold), transparent);
-    opacity: 0.5;
-    animation: scanDown 3s linear infinite;
-    pointer-events: none;
-  }
-
-  @keyframes scanDown {
-    0% { top: 0%; }
-    100% { top: 100%; }
-  }
-
-  /* CORNER BRACKETS */
-  .corner {
-    position: absolute;
-    width: 24px;
-    height: 24px;
-    pointer-events: none;
-    opacity: 0.6;
-  }
-  .corner-tl { top: 12px; left: 12px; border-top: 2px solid var(--gold); border-left: 2px solid var(--gold); }
-  .corner-tr { top: 12px; right: 12px; border-top: 2px solid var(--gold); border-right: 2px solid var(--gold); }
-  .corner-bl { bottom: 12px; left: 12px; border-bottom: 2px solid var(--gold); border-left: 2px solid var(--gold); }
-  .corner-br { bottom: 12px; right: 12px; border-bottom: 2px solid var(--gold); border-right: 2px solid var(--gold); }
-
-  /* BOTTOM BAR */
   .bottom-bar {
-    padding: 16px 20px;
-    background: linear-gradient(0deg, rgba(0,0,0,0.5) 0%, transparent 100%);
+    padding: 14px 20px;
+    background: linear-gradient(0deg, rgba(0,0,0,0.55) 0%, transparent 100%);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
   }
 
-  .stats {
-    display: flex;
-    gap: 20px;
-  }
+  .stats { display: flex; gap: 20px; }
 
-  .stat {
-    text-align: center;
-  }
-
+  .stat { text-align: center; }
   .stat-number {
     font-family: 'Cormorant Garamond', serif;
-    font-size: 26px;
-    font-weight: 600;
-    color: var(--gold);
-    line-height: 1;
+    font-size: 28px; font-weight: 600;
+    color: var(--gold); line-height: 1;
   }
-
   .stat-label {
-    font-size: 9px;
-    letter-spacing: 0.1em;
+    font-size: 9px; letter-spacing: 0.1em;
     text-transform: uppercase;
     color: rgba(255,255,255,0.4);
     margin-top: 2px;
   }
 
   .btn-scan {
-    width: 64px;
-    height: 64px;
+    width: 68px; height: 68px;
     border-radius: 50%;
     background: var(--gold);
-    border: none;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
     box-shadow: 0 0 0 4px rgba(201,168,76,0.2), 0 4px 20px rgba(0,0,0,0.4);
     transition: all 0.2s;
     flex-shrink: 0;
   }
-
-  .btn-scan:active {
-    transform: scale(0.94);
-    box-shadow: 0 0 0 2px rgba(201,168,76,0.2);
-  }
-
-  .btn-scan svg {
-    width: 28px;
-    height: 28px;
-  }
-
-  .btn-scan.scanning {
-    background: var(--fairway);
-    animation: scanPulse 1.5s ease-in-out infinite;
-  }
-
+  .btn-scan:active { transform: scale(0.93); }
+  .btn-scan.scanning { background: var(--fairway); animation: scanPulse 1.5s ease-in-out infinite; }
   @keyframes scanPulse {
-    0%, 100% { box-shadow: 0 0 0 4px rgba(122,184,122,0.2), 0 4px 20px rgba(0,0,0,0.4); }
-    50% { box-shadow: 0 0 0 10px rgba(122,184,122,0.15), 0 4px 20px rgba(0,0,0,0.4); }
+    0%,100% { box-shadow: 0 0 0 4px rgba(122,184,122,0.2), 0 4px 20px rgba(0,0,0,0.4); }
+    50%      { box-shadow: 0 0 0 12px rgba(122,184,122,0.12), 0 4px 20px rgba(0,0,0,0.4); }
   }
+  .btn-scan svg { width: 30px; height: 30px; }
 
   /* START SCREEN */
   .start-screen {
-    position: absolute;
-    inset: 0;
+    position: absolute; inset: 0;
     background: var(--green-deep);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 32px;
-    z-index: 100;
-    padding: 40px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 28px; z-index: 100; padding: 40px;
   }
-
   .start-icon {
-    width: 100px;
-    height: 100px;
+    width: 110px; height: 110px;
     border-radius: 50%;
-    background: rgba(201,168,76,0.1);
-    border: 1px solid rgba(201,168,76,0.3);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 48px;
+    background: rgba(201,168,76,0.08);
+    border: 1px solid rgba(201,168,76,0.25);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 52px;
   }
-
   .start-title {
     font-family: 'Cormorant Garamond', serif;
-    font-size: 36px;
-    font-weight: 300;
-    text-align: center;
-    line-height: 1.2;
-    color: var(--cream);
+    font-size: 38px; font-weight: 300;
+    text-align: center; line-height: 1.15; color: var(--cream);
   }
-
-  .start-title span {
-    color: var(--gold);
-    font-weight: 600;
-    display: block;
-  }
-
+  .start-title span { color: var(--gold); font-weight: 600; display: block; }
   .start-desc {
-    font-size: 12px;
-    letter-spacing: 0.05em;
+    font-size: 12px; letter-spacing: 0.04em;
     color: rgba(255,255,255,0.4);
-    text-align: center;
-    line-height: 1.8;
-    max-width: 280px;
+    text-align: center; line-height: 1.9; max-width: 280px;
   }
-
   .btn-start {
-    background: var(--gold);
-    color: var(--green-deep);
-    border: none;
-    padding: 16px 40px;
+    background: var(--gold); color: var(--green-deep);
+    border: none; padding: 16px 44px;
     font-family: 'DM Mono', monospace;
-    font-size: 13px;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    border-radius: 40px;
-    cursor: pointer;
-    transition: all 0.2s;
+    font-size: 13px; letter-spacing: 0.15em; text-transform: uppercase;
+    border-radius: 40px; cursor: pointer;
     box-shadow: 0 4px 20px rgba(201,168,76,0.3);
+    transition: all 0.2s;
   }
-
-  .btn-start:active {
-    transform: scale(0.96);
-  }
+  .btn-start:active { transform: scale(0.96); }
 
   /* TOAST */
   .toast {
-    position: absolute;
-    top: 70px;
-    left: 50%;
-    transform: translateX(-50%) translateY(-20px);
-    background: rgba(0,0,0,0.8);
-    color: var(--cream);
-    padding: 10px 20px;
-    border-radius: 20px;
-    font-size: 12px;
-    letter-spacing: 0.05em;
-    opacity: 0;
-    transition: all 0.3s;
-    pointer-events: none;
-    white-space: nowrap;
-    z-index: 50;
-    border: 1px solid rgba(255,255,255,0.1);
+    position: absolute; top: 70px;
+    left: 50%; transform: translateX(-50%) translateY(-16px);
+    background: rgba(10,20,10,0.88);
+    backdrop-filter: blur(8px);
+    color: var(--cream); padding: 10px 22px;
+    border-radius: 20px; font-size: 12px; letter-spacing: 0.05em;
+    opacity: 0; transition: all 0.3s;
+    pointer-events: none; white-space: nowrap;
+    z-index: 50; border: 1px solid rgba(255,255,255,0.08);
   }
-
-  .toast.show {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
-
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
   .toast.success { border-color: var(--fairway); color: var(--fairway); }
-  .toast.reject { border-color: var(--danger); color: #e74c3c; }
+  .toast.reject  { border-color: var(--danger);  color: #e74c3c; }
 
-  /* NO CAMERA */
   .no-camera {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 16px;
-    background: var(--green-mid);
-    color: rgba(255,255,255,0.5);
-    font-size: 13px;
-    text-align: center;
-    padding: 40px;
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 16px; background: var(--green-mid);
+    color: rgba(255,255,255,0.45);
+    font-size: 13px; text-align: center; padding: 40px;
   }
-
   .no-camera .icon { font-size: 48px; margin-bottom: 8px; }
 </style>
 </head>
 <body>
 
-<!-- START SCREEN -->
 <div class="start-screen" id="startScreen">
   <div class="start-icon">⛳</div>
   <div class="start-title">Golf Ball<span>Finder</span></div>
@@ -385,37 +290,30 @@
   <button class="btn-start" onclick="startCamera()">Iniciar câmara</button>
 </div>
 
-<!-- HEADER -->
 <header>
   <div class="logo">Golf<span>Finder</span></div>
   <div class="status-pill" id="statusPill">A iniciar...</div>
 </header>
 
-<!-- CAMERA -->
 <div class="camera-container" id="cameraContainer">
   <video id="video" autoplay playsinline muted></video>
   <canvas id="canvas"></canvas>
 
-  <!-- Scan overlay -->
-  <div class="scan-line" id="scanLine" style="display:none"></div>
+  <div class="scan-progress" id="scanProgress"></div>
 
-  <!-- Corner brackets -->
   <div class="corner corner-tl"></div>
   <div class="corner corner-tr"></div>
   <div class="corner corner-bl"></div>
   <div class="corner corner-br"></div>
 
-  <!-- Detections rendered here -->
   <div id="detectionsLayer"></div>
 
-  <!-- No camera fallback -->
   <div class="no-camera" id="noCameraMsg" style="display:none">
     <div class="icon">📷</div>
-    <div>Câmara não disponível.<br>Abre esta página no teu iPhone<br>e permite o acesso à câmara.</div>
+    <div>Câmara não disponível.<br>Abre esta página no Safari do iPhone<br>e permite o acesso à câmara.</div>
   </div>
 </div>
 
-<!-- BOTTOM BAR -->
 <div class="bottom-bar">
   <div class="stats">
     <div class="stat">
@@ -429,7 +327,6 @@
   </div>
 
   <button class="btn-scan" id="btnScan" onclick="toggleScan()">
-    <!-- Camera icon -->
     <svg viewBox="0 0 24 24" fill="none" stroke="#1a2e1a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
       <circle cx="12" cy="13" r="4"/>
@@ -448,186 +345,263 @@
   </div>
 </div>
 
-<!-- TOAST -->
 <div class="toast" id="toast"></div>
 
 <script>
+  const SCAN_INTERVAL_MS = 2500;   // scan a cada 2.5s — menos sobrecarga
+  const ANALYSIS_SCALE   = 0.25;   // analisa a 25% da resolução original — muito mais rápido
+  const MAX_DETECTIONS   = 2;      // máximo 2 deteções simultâneas no ecrã
+  const AUTO_REMOVE_MS   = 10000;  // remove deteção sem resposta após 10s
+
+  // Critérios mais apertados para reduzir falsos positivos
+  const MIN_BRIGHTNESS   = 215;    // mais alto = só aceita branco mesmo
+  const MAX_SATURATION   = 28;     // baixo = rejeita cores (amarelo, verde, etc.)
+  const MIN_CLUSTER_PTS  = 6;      // mínimo de pontos brancos no cluster
+  const MAX_CLUSTER_PTS  = 120;    // máximo — evita detetar paredes/céu branco
+  const MIN_RADIUS_PX    = 8;      // raio mínimo na imagem reduzida
+  const MAX_RADIUS_PX    = 35;     // raio máximo — bola de golfe é pequena
+  const MIN_CIRCULARITY  = 0.55;   // quão circular tem de ser (0=qualquer, 1=círculo perfeito)
+
   let video, canvas, ctx;
   let scanning = false;
-  let scanInterval = null;
+  let scanTimer = null;
   let detections = [];
   let detectionId = 0;
   let stats = { found: 0, rejected: 0, detected: 0 };
+  let isProcessing = false;
 
   async function startCamera() {
     document.getElementById('startScreen').style.display = 'none';
-    video = document.getElementById('video');
+    video  = document.getElementById('video');
     canvas = document.getElementById('canvas');
-    ctx = canvas.getContext('2d');
+    ctx    = canvas.getContext('2d', { willReadFrequently: true });
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: 'environment' },
-          width: { ideal: 1920 },
-          height: { ideal: 1080 }
-        }
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }
       });
       video.srcObject = stream;
-      video.onloadedmetadata = () => {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        setStatus('Pronto para detectar', true);
-      };
-    } catch (e) {
+      video.onloadedmetadata = () => setStatus('Pronto', true);
+    } catch(e) {
       document.getElementById('noCameraMsg').style.display = 'flex';
       setStatus('Sem câmara', false);
     }
   }
 
   function setStatus(text, active) {
-    const pill = document.getElementById('statusPill');
-    pill.textContent = text;
-    pill.className = 'status-pill' + (active ? ' active' : '');
+    const p = document.getElementById('statusPill');
+    p.textContent = text;
+    p.className = 'status-pill' + (active ? ' active' : '');
   }
 
   function toggleScan() {
     scanning = !scanning;
-    const btn = document.getElementById('btnScan');
-    const scanLine = document.getElementById('scanLine');
-
+    const btn  = document.getElementById('btnScan');
     if (scanning) {
       btn.classList.add('scanning');
-      scanLine.style.display = 'block';
       setStatus('A detectar...', true);
-      scanInterval = setInterval(detectBalls, 1200);
-      detectBalls();
+      runScan();
+      scanTimer = setInterval(runScan, SCAN_INTERVAL_MS);
     } else {
       btn.classList.remove('scanning');
-      scanLine.style.display = 'none';
       setStatus('Pausado', false);
-      clearInterval(scanInterval);
+      clearInterval(scanTimer);
+      animateProgress(0);
     }
   }
 
-  function detectBalls() {
-    if (!video || video.readyState < 2) return;
-
-    canvas.width = video.videoWidth || video.clientWidth;
-    canvas.height = video.videoHeight || video.clientHeight;
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const candidates = findWhiteCircularRegions(imageData, canvas.width, canvas.height);
-
-    candidates.forEach(c => {
-      // Check if already have a detection close to this
-      const containerRect = document.getElementById('cameraContainer').getBoundingClientRect();
-      const px = (c.x / canvas.width) * containerRect.width;
-      const py = (c.y / canvas.height) * containerRect.height;
-
-      const tooClose = detections.some(d => {
-        const dx = d.px - px;
-        const dy = d.py - py;
-        return Math.sqrt(dx*dx + dy*dy) < 60;
-      });
-
-      if (!tooClose) {
-        addDetection(px, py, c.radius);
-      }
-    });
+  function animateProgress(pct) {
+    const bar = document.getElementById('scanProgress');
+    bar.style.width = pct + '%';
+    bar.className = 'scan-progress' + (pct > 0 && pct < 100 ? ' animating' : '');
   }
 
-  function findWhiteCircularRegions(imageData, width, height) {
+  async function runScan() {
+    if (!video || video.readyState < 2 || isProcessing) return;
+    if (detections.length >= MAX_DETECTIONS) return;
+
+    isProcessing = true;
+    animateProgress(30);
+
+    // Draw video to canvas at reduced size
+    const W = Math.floor(video.videoWidth  * ANALYSIS_SCALE) || Math.floor(video.clientWidth  * ANALYSIS_SCALE);
+    const H = Math.floor(video.videoHeight * ANALYSIS_SCALE) || Math.floor(video.clientHeight * ANALYSIS_SCALE);
+    canvas.width  = W;
+    canvas.height = H;
+    ctx.drawImage(video, 0, 0, W, H);
+
+    animateProgress(60);
+
+    const imageData = ctx.getImageData(0, 0, W, H);
+    const candidates = findGolfBalls(imageData, W, H);
+
+    animateProgress(90);
+
+    const containerRect = document.getElementById('cameraContainer').getBoundingClientRect();
+
+    candidates.forEach(c => {
+      // Scale back to display coordinates
+      const px = (c.x / W) * containerRect.width;
+      const py = (c.y / H) * containerRect.height;
+      const displayRadius = (c.radius / ANALYSIS_SCALE) * 1.6;
+
+      // Avoid duplicate detections nearby
+      const tooClose = detections.some(d => {
+        const dx = d.px - px, dy = d.py - py;
+        return Math.sqrt(dx*dx + dy*dy) < 80;
+      });
+
+      if (!tooClose && detections.length < MAX_DETECTIONS) {
+        addDetection(px, py, displayRadius, c.score);
+      }
+    });
+
+    animateProgress(100);
+    setTimeout(() => animateProgress(0), 400);
+    isProcessing = false;
+  }
+
+  function findGolfBalls(imageData, W, H) {
     const data = imageData.data;
-    const candidates = [];
-    const step = 8; // sample every 8px for performance
-    const minBrightness = 210;
-    const minSaturation = 0;
-    const maxSaturation = 35;
+    const STEP = 3; // sample every 3px in reduced image
+    const cellSize = 12;
+    const cellsX = Math.ceil(W / cellSize);
+    const cellsY = Math.ceil(H / cellSize);
+    const cells  = new Array(cellsX * cellsY).fill(0);
+    const cellCx = new Array(cellsX * cellsY).fill(0);
+    const cellCy = new Array(cellsX * cellsY).fill(0);
 
-    // Find bright white clusters
-    let clusters = [];
-    const visited = new Set();
-
-    for (let y = step; y < height - step; y += step) {
-      for (let x = step; x < width - step; x += step) {
-        const i = (y * width + x) * 4;
+    // Pass 1: vote into grid cells
+    for (let y = 1; y < H - 1; y += STEP) {
+      for (let x = 1; x < W - 1; x += STEP) {
+        const i = (y * W + x) * 4;
         const r = data[i], g = data[i+1], b = data[i+2];
-        const brightness = (r + g + b) / 3;
-        const maxC = Math.max(r,g,b), minC = Math.min(r,g,b);
-        const saturation = maxC === 0 ? 0 : ((maxC - minC) / maxC) * 100;
+        const brightness  = (r + g + b) / 3;
+        const maxC = Math.max(r,g,b);
+        const saturation  = maxC < 10 ? 0 : ((maxC - Math.min(r,g,b)) / maxC) * 100;
 
-        if (brightness > minBrightness && saturation < maxSaturation) {
-          const key = `${Math.floor(x/20)}-${Math.floor(y/20)}`;
-          if (!visited.has(key)) {
-            visited.add(key);
-            // Check if there's a cluster nearby
-            let merged = false;
-            for (let c of clusters) {
-              if (Math.abs(c.cx - x) < 40 && Math.abs(c.cy - y) < 40) {
-                c.points.push({x, y});
-                c.cx = c.points.reduce((s,p) => s+p.x, 0) / c.points.length;
-                c.cy = c.points.reduce((s,p) => s+p.y, 0) / c.points.length;
-                merged = true;
-                break;
-              }
-            }
-            if (!merged) clusters.push({ cx: x, cy: y, points: [{x, y}] });
-          }
+        if (brightness >= MIN_BRIGHTNESS && saturation <= MAX_SATURATION) {
+          const cx = Math.floor(x / cellSize);
+          const cy = Math.floor(y / cellSize);
+          const ci = cy * cellsX + cx;
+          cells[ci]++;
+          cellCx[ci] += x;
+          cellCy[ci] += y;
         }
       }
     }
 
-    // Filter clusters that look like circular blobs (golf ball size)
-    clusters.forEach(c => {
-      if (c.points.length < 3) return;
+    // Pass 2: find connected white clusters
+    const clusters = [];
+    const visited  = new Set();
 
-      // Estimate radius from spread of points
-      const spread = c.points.reduce((sum, p) => {
-        return sum + Math.sqrt((p.x - c.cx)**2 + (p.y - c.cy)**2);
-      }, 0) / c.points.length;
+    for (let cy = 0; cy < cellsY; cy++) {
+      for (let cx = 0; cx < cellsX; cx++) {
+        const ci = cy * cellsX + cx;
+        if (cells[ci] < 2 || visited.has(ci)) continue;
 
-      const radius = Math.max(spread * 1.4, 18);
+        // BFS flood fill
+        const queue   = [ci];
+        const cluster = [];
+        visited.add(ci);
 
-      // Golf ball on screen: typically 15-80px radius
-      if (radius > 12 && radius < 90) {
-        candidates.push({ x: c.cx, y: c.cy, radius });
+        while (queue.length) {
+          const cur = queue.shift();
+          cluster.push(cur);
+          const ccx = cur % cellsX;
+          const ccy = Math.floor(cur / cellsX);
+
+          for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+              if (dx === 0 && dy === 0) continue;
+              const nx = ccx + dx, ny = ccy + dy;
+              if (nx < 0 || ny < 0 || nx >= cellsX || ny >= cellsY) continue;
+              const ni = ny * cellsX + nx;
+              if (!visited.has(ni) && cells[ni] >= 1) {
+                visited.add(ni);
+                queue.push(ni);
+              }
+            }
+          }
+        }
+
+        if (cluster.length < MIN_CLUSTER_PTS || cluster.length > MAX_CLUSTER_PTS) continue;
+
+        // Compute centroid
+        let sumX = 0, sumY = 0, totalPts = 0;
+        cluster.forEach(ci => {
+          const pts = cells[ci];
+          sumX     += cellCx[ci];
+          sumY     += cellCy[ci];
+          totalPts += pts;
+        });
+        const meanX = sumX / totalPts;
+        const meanY = sumY / totalPts;
+
+        // Estimate bounding box for circularity check
+        let minX = W, maxX = 0, minY = H, maxY = 0;
+        cluster.forEach(ci => {
+          const ccx2 = (ci % cellsX) * cellSize;
+          const ccy2 = Math.floor(ci / cellsX) * cellSize;
+          minX = Math.min(minX, ccx2);
+          maxX = Math.max(maxX, ccx2 + cellSize);
+          minY = Math.min(minY, ccy2);
+          maxY = Math.max(maxY, ccy2 + cellSize);
+        });
+
+        const bboxW   = maxX - minX;
+        const bboxH   = maxY - minY;
+        const aspect  = Math.min(bboxW, bboxH) / Math.max(bboxW, bboxH);
+        const radius  = (bboxW + bboxH) / 4;
+
+        // Circularity: compare cluster cell count to expected circle area
+        const expectedCells = Math.PI * (radius / cellSize) ** 2;
+        const circularity   = Math.min(cluster.length / expectedCells, 1);
+
+        if (radius < MIN_RADIUS_PX || radius > MAX_RADIUS_PX) continue;
+        if (aspect < MIN_CIRCULARITY) continue;
+        if (circularity < MIN_CIRCULARITY) continue;
+
+        // Score: higher is better candidate
+        const score = Math.round((aspect + circularity) / 2 * 100);
+
+        clusters.push({ x: meanX, y: meanY, radius, score });
       }
-    });
+    }
 
-    return candidates.slice(0, 3); // max 3 per frame
+    // Sort by score, return best candidates
+    clusters.sort((a,b) => b.score - a.score);
+    return clusters.slice(0, 2);
   }
 
-  function addDetection(px, py, radius) {
+  function addDetection(px, py, radius, score) {
     const id = ++detectionId;
-    const displayRadius = Math.max(Math.min(radius * 2.2, 80), 36);
+    const r  = Math.max(Math.min(radius, 90), 34);
 
     detections.push({ id, px, py });
     stats.detected++;
     updateStats();
 
     const layer = document.getElementById('detectionsLayer');
-    const el = document.createElement('div');
+    const el    = document.createElement('div');
     el.className = 'detection';
     el.id = `det-${id}`;
     el.style.left = px + 'px';
-    el.style.top = py + 'px';
+    el.style.top  = py + 'px';
 
     el.innerHTML = `
-      <div class="detection-ring" style="width:${displayRadius*2}px;height:${displayRadius*2}px;">
+      <div class="detection-ring" style="width:${r*2}px;height:${r*2}px;">
+        <div class="detection-label">Bola?</div>
       </div>
       <div class="detection-actions">
-        <button class="btn-confirm" onclick="confirmDetection(${id})" title="É uma bola de golfe">✓</button>
-        <button class="btn-reject" onclick="rejectDetection(${id})" title="Não é uma bola">✕</button>
+        <button class="btn-confirm" onclick="confirmDetection(${id})">✓</button>
+        <button class="btn-reject"  onclick="rejectDetection(${id})">✕</button>
       </div>
     `;
 
     layer.appendChild(el);
     updatePending();
-
-    // Auto-remove after 8s if no action
-    setTimeout(() => removeDetection(id, false), 8000);
+    setTimeout(() => removeDetection(id, false), AUTO_REMOVE_MS);
   }
 
   function confirmDetection(id) {
@@ -648,12 +622,11 @@
     const el = document.getElementById(`det-${id}`);
     if (!el) return;
     detections = detections.filter(d => d.id !== id);
-
     if (animate) {
-      el.style.transition = 'all 0.3s';
-      el.style.transform = 'translate(-50%, -50%) scale(0)';
-      el.style.opacity = '0';
-      setTimeout(() => el.remove(), 300);
+      el.style.transition = 'transform 0.25s, opacity 0.25s';
+      el.style.transform  = 'translate(-50%, -50%) scale(0)';
+      el.style.opacity    = '0';
+      setTimeout(() => el.remove(), 260);
     } else {
       el.remove();
     }
@@ -661,7 +634,7 @@
   }
 
   function updateStats() {
-    document.getElementById('countFound').textContent = stats.found;
+    document.getElementById('countFound').textContent    = stats.found;
     document.getElementById('countRejected').textContent = stats.rejected;
     document.getElementById('countDetected').textContent = stats.detected;
   }
@@ -673,8 +646,8 @@
   function showToast(msg, type) {
     const t = document.getElementById('toast');
     t.textContent = msg;
-    t.className = `toast ${type} show`;
-    setTimeout(() => t.className = 'toast', 2500);
+    t.className   = `toast ${type} show`;
+    setTimeout(() => { t.className = 'toast'; }, 2500);
   }
 </script>
 </body>
