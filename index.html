@@ -281,10 +281,10 @@
 
 <script>
   const TARGET_CLASSES   = ['sports ball'];
-  const MIN_SCORE        = 0.30;
+  const MIN_SCORE        = 0.15;  // mais baixo = detecta com menos certeza
   // Extra filter: bounding box must be roughly square (a ball is round)
   // ratio = shorter side / longer side — must be above this threshold
-  const MIN_ASPECT_RATIO = 0.65;
+  const MIN_ASPECT_RATIO = 0.45;  // mais relaxado = aceita formas menos perfeitas
   const SCAN_INTERVAL_MS = 1800;
   const MAX_DETECTIONS   = 2;
   const AUTO_REMOVE_MS   = 12000;
@@ -357,15 +357,12 @@
     try {
       const predictions = await model.detect(video);
 
+      // DEBUG: mostrar tudo o que o modelo detecta para perceber o que vê
       const balls = predictions.filter(p => {
-        if (!TARGET_CLASSES.includes(p.class)) return false;
         if (p.score < MIN_SCORE) return false;
-
-        // Circularity filter: bounding box must be roughly square
         const [, , bw, bh] = p.bbox;
         const aspect = Math.min(bw, bh) / Math.max(bw, bh);
         if (aspect < MIN_ASPECT_RATIO) return false;
-
         return true;
       });
 
@@ -386,7 +383,7 @@
         });
 
         if (!tooClose && detections.length < MAX_DETECTIONS) {
-          addDetection(px, py, r, Math.round(ball.score * 100));
+          addDetection(px, py, r, Math.round(ball.score * 100), ball.class);
         }
       });
     } catch(e) { console.error(e); }
@@ -394,7 +391,7 @@
     isProcessing = false;
   }
 
-  function addDetection(px, py, radius, confidence) {
+  function addDetection(px, py, radius, confidence, className) {
     const id = ++detectionId;
     // Ring size: based on detected radius but clamped to reasonable bounds
     const ringSize = Math.max(Math.min(radius * 1.6, 110), 50);
@@ -419,7 +416,7 @@
     el.style.top  = clampedPy + 'px';
 
     el.innerHTML = `
-      <div class="detection-label">Bola? ${confidence}%</div>
+      <div class="detection-label">${className} ${confidence}%</div>
       <div class="detection-ring" style="width:${ringSize*2}px; height:${ringSize*2}px;"></div>
       <div class="detection-actions">
         <div class="btn-wrap">
