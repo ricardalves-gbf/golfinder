@@ -3,1466 +3,652 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Golf Ball Finder</title>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --green: #2d5a1b;
-    --green-light: #3d7a25;
-    --green-bright: #5aad30;
-    --fairway: #4a8c28;
-    --gold: #d4a843;
-    --white: #f5f5f0;
-    --bg: #0f1a0a;
-    --card: rgba(20, 35, 12, 0.92);
-    --border: rgba(90, 173, 48, 0.3);
-  }
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=DM+Mono:wght@300;400&display=swap');
 
-  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --green-deep: #1a2e1a;
+    --green-mid: #2d4a2d;
+    --green-light: #4a7c4a;
+    --fairway: #7ab87a;
+    --cream: #f5f0e8;
+    --gold: #c9a84c;
+    --danger: #c0392b;
+  }
 
   body {
-    font-family: 'DM Sans', sans-serif;
-    background: var(--bg);
-    color: var(--white);
+    background: var(--green-deep);
+    color: var(--cream);
+    font-family: 'DM Mono', monospace;
     height: 100dvh;
     overflow: hidden;
-    position: relative;
-  }
-
-  /* NAV */
-  .nav {
-    position: fixed;
-    bottom: 0;
-    left: 0; right: 0;
-    z-index: 100;
-    display: flex;
-    background: rgba(15,26,10,0.97);
-    border-top: 1px solid var(--border);
-    backdrop-filter: blur(20px);
-    padding-bottom: env(safe-area-inset-bottom);
-  }
-
-  .nav-btn {
-    flex: 1;
     display: flex;
     flex-direction: column;
+  }
+
+  header {
+    padding: 16px 20px 12px;
+    display: flex;
     align-items: center;
-    gap: 4px;
-    padding: 12px 8px;
-    border: none;
-    background: none;
-    color: rgba(245,245,240,0.4);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 10px;
-    font-weight: 500;
-    letter-spacing: 0.5px;
-    cursor: pointer;
-    transition: color 0.2s;
-  }
-
-  .nav-btn.active { color: var(--green-bright); }
-  .nav-btn svg { width: 22px; height: 22px; }
-
-  /* SCREENS */
-  .screen {
-    display: none;
-    height: 100dvh;
-    overflow: hidden;
-  }
-  .screen.active { display: flex; flex-direction: column; }
-
-  /* ===== CAMERA SCREEN ===== */
-  #cam-screen {
-    position: relative;
-    background: #000;
-  }
-
-  #video {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-  #canvas-overlay {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-  }
-
-  .cam-ui {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
     justify-content: space-between;
-    padding: 0 0 calc(80px + env(safe-area-inset-bottom)) 0;
-  }
-
-  .cam-header {
-    padding: 50px 20px 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    background: linear-gradient(to bottom, rgba(0,0,0,0.7), transparent);
-  }
-
-  .cam-title {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 28px;
-    letter-spacing: 3px;
-    color: var(--white);
-    text-shadow: 0 2px 10px rgba(0,0,0,0.5);
-  }
-
-  .score-badge {
-    background: var(--green-bright);
-    color: #fff;
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 20px;
-    letter-spacing: 2px;
-    padding: 6px 14px;
-    border-radius: 20px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .cam-footer {
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
-  }
-
-  .detection-status {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 13px;
-    font-weight: 500;
-  }
-
-  .status-dot {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    background: var(--green-bright);
-    animation: pulse 1.5s infinite;
-  }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.5; transform: scale(1.3); }
-  }
-
-  .cam-actions {
-    display: flex;
-    gap: 12px;
-  }
-
-  .btn-primary {
-    flex: 1;
-    background: var(--green-bright);
-    color: #fff;
-    border: none;
-    border-radius: 14px;
-    padding: 14px;
-    font-family: 'DM Sans', sans-serif;
-    font-weight: 600;
-    font-size: 15px;
-    cursor: pointer;
-    transition: transform 0.1s, background 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-  }
-
-  .btn-primary:active { transform: scale(0.97); }
-
-  .btn-secondary {
-    background: rgba(255,255,255,0.15);
-    color: var(--white);
-    border: 1px solid rgba(255,255,255,0.2);
-    border-radius: 14px;
-    padding: 14px 18px;
-    font-family: 'DM Sans', sans-serif;
-    font-weight: 500;
-    font-size: 15px;
-    cursor: pointer;
-    backdrop-filter: blur(10px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-  }
-
-  /* Detection box animation */
-  .detection-box {
-    position: absolute;
-    border: 2px solid var(--green-bright);
-    border-radius: 50%;
-    box-shadow: 0 0 15px rgba(90,173,48,0.6), inset 0 0 15px rgba(90,173,48,0.1);
-    pointer-events: none;
-    animation: detectPulse 1s ease-in-out infinite;
-    transition: all 0.1s;
-  }
-
-  @keyframes detectPulse {
-    0%, 100% { box-shadow: 0 0 10px rgba(90,173,48,0.6), inset 0 0 10px rgba(90,173,48,0.1); }
-    50% { box-shadow: 0 0 25px rgba(90,173,48,0.9), inset 0 0 20px rgba(90,173,48,0.2); }
-  }
-
-  .detection-label {
-    position: absolute;
-    bottom: -24px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: var(--green-bright);
-    color: #fff;
-    font-size: 10px;
-    font-weight: 700;
-    padding: 2px 8px;
-    border-radius: 10px;
-    white-space: nowrap;
-    letter-spacing: 0.5px;
-  }
-
-  /* Scan line */
-  .scan-line {
-    position: absolute;
-    left: 0; right: 0;
-    height: 2px;
-    background: linear-gradient(to right, transparent, var(--green-bright), transparent);
-    animation: scanDown 3s linear infinite;
-    opacity: 0.6;
-  }
-
-  @keyframes scanDown {
-    0% { top: 0; }
-    100% { top: 100%; }
-  }
-
-  /* Corner guides */
-  .corner-guide {
-    position: absolute;
-    width: 200px;
-    height: 200px;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    pointer-events: none;
-  }
-
-  .corner-guide::before, .corner-guide::after,
-  .corner-guide span::before, .corner-guide span::after {
-    content: '';
-    position: absolute;
-    width: 20px;
-    height: 20px;
-    border-color: rgba(90,173,48,0.8);
-    border-style: solid;
-  }
-
-  .corner-guide::before { top: 0; left: 0; border-width: 2px 0 0 2px; border-radius: 3px 0 0 0; }
-  .corner-guide::after { top: 0; right: 0; border-width: 2px 2px 0 0; border-radius: 0 3px 0 0; }
-  .corner-guide span::before { bottom: 0; left: 0; border-width: 0 0 2px 2px; border-radius: 0 0 0 3px; }
-  .corner-guide span::after { bottom: 0; right: 0; border-width: 0 2px 2px 0; border-radius: 0 0 3px 0; }
-
-  /* ===== MAP SCREEN ===== */
-  #map-screen {
-    background: var(--bg);
-  }
-
-  .screen-header {
-    padding: 55px 20px 16px;
-    background: linear-gradient(to bottom, var(--bg), transparent);
+    background: linear-gradient(180deg, rgba(0,0,0,0.4) 0%, transparent 100%);
     position: relative;
     z-index: 10;
   }
 
-  .screen-header h1 {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 32px;
-    letter-spacing: 3px;
-    color: var(--white);
-  }
-
-  .screen-header p {
-    font-size: 13px;
-    color: rgba(245,245,240,0.5);
-    margin-top: 2px;
-  }
-
-  #map-container {
-    flex: 1;
-    position: relative;
-    overflow: hidden;
-  }
-
-  #map {
-    width: 100%;
-    height: 100%;
-    background: #1a2f10;
-    position: relative;
-    overflow: hidden;
-  }
-
-  /* Fake map terrain */
-  .map-terrain {
-    position: absolute;
-    inset: 0;
-    background:
-      radial-gradient(ellipse 120px 80px at 30% 40%, #2d5a1b 0%, transparent 70%),
-      radial-gradient(ellipse 200px 120px at 70% 60%, #3d7a25 0%, transparent 70%),
-      radial-gradient(ellipse 80px 80px at 50% 20%, #1a3d10 0%, transparent 60%),
-      radial-gradient(ellipse 150px 100px at 20% 75%, #2d5a1b 0%, transparent 70%),
-      linear-gradient(135deg, #1a2f10 0%, #233d14 50%, #1a2f10 100%);
-  }
-
-  /* Water hazard */
-  .map-water {
-    position: absolute;
-    width: 80px;
-    height: 50px;
-    background: radial-gradient(ellipse, #1a4a6b, #0d2a40);
-    border-radius: 50%;
-    top: 55%;
-    left: 60%;
-    opacity: 0.8;
-  }
-
-  /* Fairway */
-  .map-fairway {
-    position: absolute;
-    width: 60px;
-    height: 160px;
-    background: rgba(74, 140, 40, 0.4);
-    border-radius: 30px;
-    top: 20%;
-    left: 45%;
-    transform: rotate(15deg);
-  }
-
-  /* Grid lines */
-  .map-grid {
-    position: absolute;
-    inset: 0;
-    background-image:
-      linear-gradient(rgba(90,173,48,0.05) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(90,173,48,0.05) 1px, transparent 1px);
-    background-size: 40px 40px;
-  }
-
-  .map-pin {
-    position: absolute;
-    width: 32px;
-    height: 32px;
-    transform: translate(-50%, -50%);
-    cursor: pointer;
-    transition: transform 0.2s;
-  }
-
-  .map-pin:active { transform: translate(-50%, -50%) scale(1.2); }
-
-  .map-pin-inner {
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 16px;
-    border: 2px solid rgba(255,255,255,0.3);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-  }
-
-  .map-pin.found .map-pin-inner { background: var(--green-bright); }
-  .map-pin.lost .map-pin-inner { background: #e05252; }
-  .map-pin.search .map-pin-inner { background: var(--gold); animation: pinPulse 2s infinite; }
-
-  @keyframes pinPulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(212,168,67,0.5); }
-    50% { box-shadow: 0 0 0 10px rgba(212,168,67,0); }
-  }
-
-  /* You are here */
-  .map-me {
-    position: absolute;
-    width: 16px;
-    height: 16px;
-    background: #4d9fff;
-    border-radius: 50%;
-    border: 3px solid #fff;
-    box-shadow: 0 0 0 4px rgba(77,159,255,0.3);
-    transform: translate(-50%, -50%);
-    animation: meBlip 2s infinite;
-  }
-
-  @keyframes meBlip {
-    0%, 100% { box-shadow: 0 0 0 4px rgba(77,159,255,0.3); }
-    50% { box-shadow: 0 0 0 10px rgba(77,159,255,0); }
-  }
-
-  .map-controls {
-    position: absolute;
-    bottom: 20px;
-    right: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .map-ctrl-btn {
-    width: 44px;
-    height: 44px;
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    color: var(--white);
-    font-size: 20px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    backdrop-filter: blur(10px);
-  }
-
-  .map-legend {
-    position: absolute;
-    bottom: 20px;
-    left: 16px;
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 12px 14px;
-    backdrop-filter: blur(10px);
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .legend-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 11px;
-    color: rgba(245,245,240,0.7);
-  }
-
-  .legend-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-
-  /* Add pin panel */
-  .add-pin-panel {
-    display: none;
-    position: absolute;
-    bottom: 0;
-    left: 0; right: 0;
-    background: var(--card);
-    border-top: 1px solid var(--border);
-    border-radius: 24px 24px 0 0;
-    padding: 20px;
-    z-index: 20;
-    backdrop-filter: blur(20px);
-  }
-
-  .add-pin-panel.visible { display: block; }
-
-  .panel-handle {
-    width: 36px;
-    height: 4px;
-    background: rgba(255,255,255,0.2);
-    border-radius: 2px;
-    margin: 0 auto 16px;
-  }
-
-  .panel-title {
-    font-family: 'Bebas Neue', sans-serif;
+  .logo {
+    font-family: 'Cormorant Garamond', serif;
     font-size: 22px;
-    letter-spacing: 2px;
-    margin-bottom: 14px;
+    font-weight: 300;
+    letter-spacing: 0.05em;
+    color: var(--cream);
   }
+  .logo span { color: var(--gold); font-weight: 600; }
 
-  .pin-type-select {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 16px;
-  }
-
-  .pin-type-btn {
-    flex: 1;
-    padding: 10px;
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    background: transparent;
-    color: var(--white);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-  }
-
-  .pin-type-btn.selected {
-    border-color: var(--green-bright);
-    background: rgba(90,173,48,0.15);
-    color: var(--green-bright);
-  }
-
-  /* ===== DICAS SCREEN ===== */
-  #tips-screen {
-    background: var(--bg);
-    overflow-y: auto;
-    padding-bottom: calc(80px + env(safe-area-inset-bottom));
-  }
-
-  .tips-hero {
-    padding: 55px 20px 24px;
-    background: linear-gradient(to bottom, rgba(45,90,27,0.3), transparent);
-  }
-
-  .tips-hero h1 {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 36px;
-    letter-spacing: 3px;
-  }
-
-  .tips-hero p {
-    font-size: 13px;
-    color: rgba(245,245,240,0.5);
-    margin-top: 4px;
-  }
-
-  .terrain-grid {
-    padding: 0 16px;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin-bottom: 24px;
-  }
-
-  .terrain-card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 18px;
-    padding: 16px;
-    cursor: pointer;
-    transition: all 0.2s;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .terrain-card::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    opacity: 0;
-    transition: opacity 0.2s;
-    border-radius: 18px;
-  }
-
-  .terrain-card:active::before { opacity: 1; background: rgba(90,173,48,0.1); }
-
-  .terrain-icon { font-size: 32px; margin-bottom: 8px; display: block; }
-
-  .terrain-name {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 18px;
-    letter-spacing: 1px;
-    margin-bottom: 4px;
-  }
-
-  .terrain-desc {
-    font-size: 11px;
-    color: rgba(245,245,240,0.5);
-    line-height: 1.4;
-  }
-
-  .terrain-tips {
-    display: none;
-    padding: 0 16px;
-    margin-bottom: 16px;
-  }
-
-  .terrain-tips.visible { display: block; }
-
-  .tips-card {
-    background: var(--card);
-    border: 1px solid var(--green-bright);
-    border-radius: 18px;
-    padding: 20px;
-  }
-
-  .tips-card-header {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 16px;
-  }
-
-  .tips-card-header span { font-size: 28px; }
-
-  .tips-card-header h2 {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 24px;
-    letter-spacing: 2px;
-    color: var(--green-bright);
-  }
-
-  .tip-item {
-    display: flex;
-    gap: 12px;
-    margin-bottom: 12px;
-    align-items: flex-start;
-  }
-
-  .tip-number {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    background: rgba(90,173,48,0.2);
-    border: 1px solid var(--green-bright);
-    color: var(--green-bright);
-    font-size: 11px;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    margin-top: 1px;
-  }
-
-  .tip-text {
-    font-size: 13px;
-    line-height: 1.5;
-    color: rgba(245,245,240,0.85);
-  }
-
-  /* ===== STATS SCREEN ===== */
-  #stats-screen {
-    background: var(--bg);
-    overflow-y: auto;
-    padding-bottom: calc(80px + env(safe-area-inset-bottom));
-  }
-
-  .stats-header {
-    padding: 55px 20px 24px;
-  }
-
-  .stats-header h1 {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 36px;
-    letter-spacing: 3px;
-  }
-
-  .big-counter {
-    margin: 0 16px 20px;
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 24px;
-    padding: 32px 24px;
-    text-align: center;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .big-counter::before {
-    content: '';
-    position: absolute;
-    top: -60px; left: -60px;
-    width: 200px; height: 200px;
-    background: radial-gradient(circle, rgba(90,173,48,0.15), transparent 70%);
-    border-radius: 50%;
-  }
-
-  .counter-label {
-    font-size: 12px;
-    letter-spacing: 3px;
+  .status-pill {
+    font-size: 10px;
+    letter-spacing: 0.15em;
     text-transform: uppercase;
-    color: rgba(245,245,240,0.4);
-    margin-bottom: 8px;
-  }
-
-  .counter-number {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 96px;
-    line-height: 1;
-    color: var(--green-bright);
-    letter-spacing: -2px;
-    position: relative;
-  }
-
-  .counter-sub {
-    font-size: 13px;
-    color: rgba(245,245,240,0.4);
-    margin-top: 4px;
-  }
-
-  .counter-actions {
-    display: flex;
-    gap: 12px;
-    margin-top: 20px;
-    position: relative;
-  }
-
-  .count-btn {
-    flex: 1;
-    padding: 14px;
-    border: none;
-    border-radius: 14px;
-    font-family: 'DM Sans', sans-serif;
-    font-weight: 700;
-    font-size: 22px;
-    cursor: pointer;
-    transition: transform 0.1s;
-  }
-
-  .count-btn:active { transform: scale(0.95); }
-  .count-btn.minus { background: rgba(224,82,82,0.2); color: #e05252; }
-  .count-btn.plus { background: rgba(90,173,48,0.2); color: var(--green-bright); }
-
-  .stats-grid {
-    padding: 0 16px;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin-bottom: 20px;
-  }
-
-  .stat-card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 18px;
-    padding: 18px;
-  }
-
-  .stat-label {
-    font-size: 11px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: rgba(245,245,240,0.4);
-    margin-bottom: 6px;
-  }
-
-  .stat-value {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 36px;
-    letter-spacing: 1px;
-    color: var(--gold);
-  }
-
-  .stat-unit {
-    font-size: 12px;
-    color: rgba(245,245,240,0.4);
-    margin-top: 2px;
-  }
-
-  .history-section {
-    padding: 0 16px;
-  }
-
-  .section-title {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 20px;
-    letter-spacing: 2px;
-    color: rgba(245,245,240,0.5);
-    margin-bottom: 12px;
-  }
-
-  .history-item {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 14px 16px;
-    margin-bottom: 8px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .history-icon {
-    width: 38px;
-    height: 38px;
-    border-radius: 50%;
-    background: rgba(90,173,48,0.15);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-    flex-shrink: 0;
-  }
-
-  .history-info { flex: 1; }
-
-  .history-title {
-    font-size: 14px;
-    font-weight: 600;
-    margin-bottom: 2px;
-  }
-
-  .history-time {
-    font-size: 11px;
-    color: rgba(245,245,240,0.4);
-  }
-
-  .history-count {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 22px;
-    color: var(--green-bright);
-    letter-spacing: 1px;
-  }
-
-  /* Toast */
-  .toast {
-    position: fixed;
-    top: 60px;
-    left: 50%;
-    transform: translateX(-50%) translateY(-20px);
-    background: var(--green-bright);
-    color: #fff;
-    padding: 10px 20px;
+    padding: 4px 10px;
+    border: 1px solid rgba(255,255,255,0.2);
     border-radius: 20px;
-    font-size: 14px;
-    font-weight: 600;
-    z-index: 200;
-    opacity: 0;
+    color: rgba(255,255,255,0.6);
     transition: all 0.3s;
+  }
+  .status-pill.active { border-color: var(--fairway); color: var(--fairway); background: rgba(122,184,122,0.1); }
+  .status-pill.warning { border-color: var(--gold); color: var(--gold); background: rgba(201,168,76,0.1); }
+
+  .camera-container {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+
+  #video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  #canvas { display: none; }
+
+  .corner {
+    position: absolute;
+    width: 24px; height: 24px;
     pointer-events: none;
-    white-space: nowrap;
+    opacity: 0.5;
+    z-index: 5;
+  }
+  .corner-tl { top: 12px; left: 12px; border-top: 2px solid var(--gold); border-left: 2px solid var(--gold); }
+  .corner-tr { top: 12px; right: 12px; border-top: 2px solid var(--gold); border-right: 2px solid var(--gold); }
+  .corner-bl { bottom: 12px; left: 12px; border-bottom: 2px solid var(--gold); border-left: 2px solid var(--gold); }
+  .corner-br { bottom: 12px; right: 12px; border-bottom: 2px solid var(--gold); border-right: 2px solid var(--gold); }
+
+  /* Scan progress bar */
+  .scan-progress {
+    position: absolute;
+    bottom: 0; left: 0;
+    height: 2px;
+    background: var(--gold);
+    opacity: 0;
+    transition: width 0.1s linear;
+    z-index: 6;
+  }
+  .scan-progress.animating {
+    opacity: 0.6;
   }
 
-  .toast.visible {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
-
-  /* No camera msg */
-  .no-camera {
+  #detectionsLayer {
     position: absolute;
     inset: 0;
+    z-index: 5;
+  }
+
+  .detection {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    pointer-events: all;
+    animation: popIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  @keyframes popIn {
+    from { transform: translate(-50%, -50%) scale(0.3); opacity: 0; }
+    to   { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  }
+
+  .detection-ring {
+    border-radius: 50%;
+    border: 2.5px solid var(--gold);
+    box-shadow: 0 0 0 1px rgba(201,168,76,0.2), 0 0 16px rgba(201,168,76,0.5), inset 0 0 12px rgba(201,168,76,0.1);
+    animation: pulse 1.8s ease-in-out infinite;
+    position: relative;
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
+  }
+
+  @keyframes pulse {
+    0%,100% { box-shadow: 0 0 0 1px rgba(201,168,76,0.2), 0 0 16px rgba(201,168,76,0.5); }
+    50%      { box-shadow: 0 0 0 5px rgba(201,168,76,0.1), 0 0 28px rgba(201,168,76,0.7); }
+  }
+
+  .detection-label {
+    position: absolute;
+    top: -22px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--gold);
+    white-space: nowrap;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+  }
+
+  .detection-actions {
+    position: absolute;
+    bottom: -52px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
     gap: 12px;
-    text-align: center;
-    padding: 40px;
-    background: #0a150a;
+    align-items: center;
   }
 
-  .no-camera-icon { font-size: 48px; opacity: 0.4; }
+  .btn-confirm, .btn-reject {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.15s;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.5);
+  }
+  .btn-confirm { background: var(--fairway); color: white; }
+  .btn-reject  { background: var(--danger);  color: white; }
+  .btn-confirm:active, .btn-reject:active { transform: scale(0.88); }
 
-  .no-camera h3 {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 24px;
-    letter-spacing: 2px;
-    color: rgba(245,245,240,0.6);
+  .bottom-bar {
+    padding: 14px 20px;
+    background: linear-gradient(0deg, rgba(0,0,0,0.55) 0%, transparent 100%);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
   }
 
-  .no-camera p {
-    font-size: 13px;
-    color: rgba(245,245,240,0.35);
-    line-height: 1.5;
+  .stats { display: flex; gap: 20px; }
+
+  .stat { text-align: center; }
+  .stat-number {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 28px; font-weight: 600;
+    color: var(--gold); line-height: 1;
   }
+  .stat-label {
+    font-size: 9px; letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.4);
+    margin-top: 2px;
+  }
+
+  .btn-scan {
+    width: 68px; height: 68px;
+    border-radius: 50%;
+    background: var(--gold);
+    border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 0 4px rgba(201,168,76,0.2), 0 4px 20px rgba(0,0,0,0.4);
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+  .btn-scan:active { transform: scale(0.93); }
+  .btn-scan.scanning { background: var(--fairway); animation: scanPulse 1.5s ease-in-out infinite; }
+  @keyframes scanPulse {
+    0%,100% { box-shadow: 0 0 0 4px rgba(122,184,122,0.2), 0 4px 20px rgba(0,0,0,0.4); }
+    50%      { box-shadow: 0 0 0 12px rgba(122,184,122,0.12), 0 4px 20px rgba(0,0,0,0.4); }
+  }
+  .btn-scan svg { width: 30px; height: 30px; }
+
+  /* START SCREEN */
+  .start-screen {
+    position: absolute; inset: 0;
+    background: var(--green-deep);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 28px; z-index: 100; padding: 40px;
+  }
+  .start-icon {
+    width: 110px; height: 110px;
+    border-radius: 50%;
+    background: rgba(201,168,76,0.08);
+    border: 1px solid rgba(201,168,76,0.25);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 52px;
+  }
+  .start-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 38px; font-weight: 300;
+    text-align: center; line-height: 1.15; color: var(--cream);
+  }
+  .start-title span { color: var(--gold); font-weight: 600; display: block; }
+  .start-desc {
+    font-size: 12px; letter-spacing: 0.04em;
+    color: rgba(255,255,255,0.4);
+    text-align: center; line-height: 1.9; max-width: 280px;
+  }
+  .btn-start {
+    background: var(--gold); color: var(--green-deep);
+    border: none; padding: 16px 44px;
+    font-family: 'DM Mono', monospace;
+    font-size: 13px; letter-spacing: 0.15em; text-transform: uppercase;
+    border-radius: 40px; cursor: pointer;
+    box-shadow: 0 4px 20px rgba(201,168,76,0.3);
+    transition: all 0.2s;
+  }
+  .btn-start:active { transform: scale(0.96); }
+
+  /* TOAST */
+  .toast {
+    position: absolute; top: 70px;
+    left: 50%; transform: translateX(-50%) translateY(-16px);
+    background: rgba(10,20,10,0.88);
+    backdrop-filter: blur(8px);
+    color: var(--cream); padding: 10px 22px;
+    border-radius: 20px; font-size: 12px; letter-spacing: 0.05em;
+    opacity: 0; transition: all 0.3s;
+    pointer-events: none; white-space: nowrap;
+    z-index: 50; border: 1px solid rgba(255,255,255,0.08);
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.success { border-color: var(--fairway); color: var(--fairway); }
+  .toast.reject  { border-color: var(--danger);  color: #e74c3c; }
+
+  .no-camera {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 16px; background: var(--green-mid);
+    color: rgba(255,255,255,0.45);
+    font-size: 13px; text-align: center; padding: 40px;
+  }
+  .no-camera .icon { font-size: 48px; margin-bottom: 8px; }
 </style>
 </head>
 <body>
 
-<!-- TOAST -->
+<div class="start-screen" id="startScreen">
+  <div class="start-icon">⛳</div>
+  <div class="start-title">Golf Ball<span>Finder</span></div>
+  <p class="start-desc">Aponta a câmara para o campo.<br>A app detecta bolas automaticamente.<br>Confirma ou rejeita cada detecção.</p>
+  <button class="btn-start" onclick="startCamera()">Iniciar câmara</button>
+</div>
+
+<header>
+  <div class="logo">Golf<span>Finder</span></div>
+  <div class="status-pill" id="statusPill">A iniciar...</div>
+</header>
+
+<div class="camera-container" id="cameraContainer">
+  <video id="video" autoplay playsinline muted></video>
+  <canvas id="canvas"></canvas>
+
+  <div class="scan-progress" id="scanProgress"></div>
+
+  <div class="corner corner-tl"></div>
+  <div class="corner corner-tr"></div>
+  <div class="corner corner-bl"></div>
+  <div class="corner corner-br"></div>
+
+  <div id="detectionsLayer"></div>
+
+  <div class="no-camera" id="noCameraMsg" style="display:none">
+    <div class="icon">📷</div>
+    <div>Câmara não disponível.<br>Abre esta página no Safari do iPhone<br>e permite o acesso à câmara.</div>
+  </div>
+</div>
+
+<div class="bottom-bar">
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-number" id="countFound">0</div>
+      <div class="stat-label">Confirmadas</div>
+    </div>
+    <div class="stat">
+      <div class="stat-number" id="countRejected">0</div>
+      <div class="stat-label">Rejeitadas</div>
+    </div>
+  </div>
+
+  <button class="btn-scan" id="btnScan" onclick="toggleScan()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#1a2e1a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+      <circle cx="12" cy="13" r="4"/>
+    </svg>
+  </button>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-number" id="countDetected">0</div>
+      <div class="stat-label">Detectadas</div>
+    </div>
+    <div class="stat">
+      <div class="stat-number" id="countPending">0</div>
+      <div class="stat-label">Pendentes</div>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
-<!-- CAMERA SCREEN -->
-<div id="cam-screen" class="screen active">
-  <video id="video" autoplay playsinline muted></video>
-  <canvas id="canvas-overlay"></canvas>
-  <div class="scan-line"></div>
-  <div class="corner-guide"><span></span></div>
-
-  <div class="cam-ui">
-    <div class="cam-header">
-      <div>
-        <div class="cam-title">GOLF FINDER</div>
-      </div>
-      <div class="score-badge">
-        ⛳ <span id="header-count">0</span>
-      </div>
-    </div>
-
-    <div class="cam-footer">
-      <div class="detection-status">
-        <div class="status-dot"></div>
-        <span id="detect-status">A procurar bolas brancas...</span>
-      </div>
-      <div class="cam-actions">
-        <button class="btn-primary" id="capture-btn" onclick="captureAndAnalyze()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><circle cx="12" cy="12" r="3"/><path d="M6.3 6.3a8 8 0 1 0 11.4 0"/></svg>
-          Analisar Frame
-        </button>
-        <button class="btn-secondary" onclick="markBallFound()">
-          ✅ Encontrei!
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <div id="no-cam-msg" class="no-camera" style="display:none">
-    <div class="no-camera-icon">📷</div>
-    <h3>Câmera não disponível</h3>
-    <p>Para usar a câmera AR, abre esta app no Safari do teu iPhone e permite o acesso à câmera.</p>
-    <button class="btn-primary" style="margin-top:8px; max-width:220px" onclick="startCamera()">Tentar de novo</button>
-  </div>
-</div>
-
-<!-- MAP SCREEN -->
-<div id="map-screen" class="screen">
-  <div class="screen-header">
-    <h1>MAPA DO CAMPO</h1>
-    <p>Toca para adicionar marcadores</p>
-  </div>
-
-  <div id="map-container">
-    <div id="map" onclick="mapTapped(event)">
-      <div class="map-terrain"></div>
-      <div class="map-fairway"></div>
-      <div class="map-water"></div>
-      <div class="map-grid"></div>
-      <!-- You are here -->
-      <div class="map-me" id="map-me" style="left:50%;top:70%"></div>
-      <!-- Pins will be added here -->
-    </div>
-
-    <div class="map-controls">
-      <div class="map-ctrl-btn" onclick="showToast('GPS ativado')">📍</div>
-      <div class="map-ctrl-btn" onclick="clearPins()">🗑️</div>
-    </div>
-
-    <div class="map-legend">
-      <div class="legend-item"><div class="legend-dot" style="background:var(--green-bright)"></div> Bola encontrada</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#e05252"></div> Bola perdida</div>
-      <div class="legend-item"><div class="legend-dot" style="background:var(--gold)"></div> A procurar aqui</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#4d9fff"></div> A minha posição</div>
-    </div>
-  </div>
-
-  <div class="add-pin-panel" id="add-pin-panel">
-    <div class="panel-handle"></div>
-    <div class="panel-title">ADICIONAR MARCADOR</div>
-    <div class="pin-type-select">
-      <button class="pin-type-btn selected" data-type="search" onclick="selectPinType(this, 'search')">🟡 A procurar</button>
-      <button class="pin-type-btn" data-type="found" onclick="selectPinType(this, 'found')">🟢 Encontrada</button>
-      <button class="pin-type-btn" data-type="lost" onclick="selectPinType(this, 'lost')">🔴 Perdida</button>
-    </div>
-    <div style="display:flex;gap:10px">
-      <button class="btn-primary" onclick="confirmPin()">Confirmar</button>
-      <button class="btn-secondary" onclick="cancelPin()">Cancelar</button>
-    </div>
-  </div>
-</div>
-
-<!-- TIPS SCREEN -->
-<div id="tips-screen" class="screen">
-  <div class="tips-hero">
-    <h1>DICAS DE CAMPO</h1>
-    <p>Seleciona o tipo de terreno</p>
-  </div>
-
-  <div class="terrain-grid">
-    <div class="terrain-card" onclick="showTips('rough')">
-      <span class="terrain-icon">🌿</span>
-      <div class="terrain-name">ROUGH</div>
-      <div class="terrain-desc">Relva alta e densa</div>
-    </div>
-    <div class="terrain-card" onclick="showTips('water')">
-      <span class="terrain-icon">💧</span>
-      <div class="terrain-name">ÁGUA</div>
-      <div class="terrain-desc">Lagos e riachos</div>
-    </div>
-    <div class="terrain-card" onclick="showTips('trees')">
-      <span class="terrain-icon">🌲</span>
-      <div class="terrain-name">ÁRVORES</div>
-      <div class="terrain-desc">Zonas florestais</div>
-    </div>
-    <div class="terrain-card" onclick="showTips('bunker')">
-      <span class="terrain-icon">🏜️</span>
-      <div class="terrain-name">BUNKER</div>
-      <div class="terrain-desc">Obstáculos de areia</div>
-    </div>
-    <div class="terrain-card" onclick="showTips('fairway')">
-      <span class="terrain-icon">⛳</span>
-      <div class="terrain-name">FAIRWAY</div>
-      <div class="terrain-desc">Zona principal</div>
-    </div>
-    <div class="terrain-card" onclick="showTips('green')">
-      <span class="terrain-icon">🎯</span>
-      <div class="terrain-name">GREEN</div>
-      <div class="terrain-desc">Próximo ao buraco</div>
-    </div>
-  </div>
-
-  <div class="terrain-tips" id="terrain-tips">
-    <div class="tips-card" id="tips-content"></div>
-  </div>
-</div>
-
-<!-- STATS SCREEN -->
-<div id="stats-screen" class="screen">
-  <div class="stats-header">
-    <h1>AS MINHAS STATS</h1>
-  </div>
-
-  <div class="big-counter">
-    <div class="counter-label">BOLAS ENCONTRADAS HOJE</div>
-    <div class="counter-number" id="big-count">0</div>
-    <div class="counter-sub">bolas recolhidas</div>
-    <div class="counter-actions">
-      <button class="count-btn minus" onclick="changeCount(-1)">−</button>
-      <button class="count-btn plus" onclick="changeCount(1)">+</button>
-    </div>
-  </div>
-
-  <div class="stats-grid">
-    <div class="stat-card">
-      <div class="stat-label">Total geral</div>
-      <div class="stat-value" id="stat-total">0</div>
-      <div class="stat-unit">bolas</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Sessões</div>
-      <div class="stat-value" id="stat-sessions">1</div>
-      <div class="stat-unit">rondas</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Recorde</div>
-      <div class="stat-value" id="stat-record">0</div>
-      <div class="stat-unit">numa ronda</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Marcadores</div>
-      <div class="stat-value" id="stat-pins">0</div>
-      <div class="stat-unit">no mapa</div>
-    </div>
-  </div>
-
-  <div class="history-section">
-    <div class="section-title">HISTORIAL</div>
-    <div id="history-list">
-      <div class="history-item">
-        <div class="history-icon">⛳</div>
-        <div class="history-info">
-          <div class="history-title">Campo de Golfe — Cascais</div>
-          <div class="history-time">Hoje · 09:30</div>
-        </div>
-        <div class="history-count">0</div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- NAVIGATION -->
-<nav class="nav">
-  <button class="nav-btn active" onclick="showScreen('cam-screen', this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-    Câmera
-  </button>
-  <button class="nav-btn" onclick="showScreen('map-screen', this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></svg>
-    Mapa
-  </button>
-  <button class="nav-btn" onclick="showScreen('tips-screen', this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-    Dicas
-  </button>
-  <button class="nav-btn" onclick="showScreen('stats-screen', this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-    Stats
-  </button>
-</nav>
-
 <script>
-// ===== STATE =====
-let ballCount = 0;
-let totalBalls = 0;
-let sessionRecord = 0;
-let pinCount = 0;
-let pendingPin = null;
-let selectedPinType = 'search';
-let videoStream = null;
-let detectionInterval = null;
+  const SCAN_INTERVAL_MS = 2500;   // scan a cada 2.5s — menos sobrecarga
+  const ANALYSIS_SCALE   = 0.25;   // analisa a 25% da resolução original — muito mais rápido
+  const MAX_DETECTIONS   = 2;      // máximo 2 deteções simultâneas no ecrã
+  const AUTO_REMOVE_MS   = 10000;  // remove deteção sem resposta após 10s
 
-const tipsData = {
-  rough: {
-    icon: '🌿',
-    name: 'ROUGH',
-    tips: [
-      'Procura em padrão de zigue-zague: começa de onde a bola caiu e varre lateralmente para ambos os lados.',
-      'A bola tende a assentar na base da relva — afasta os tufos com o pé antes de olhar para baixo.',
-      'Usa a câmera AR para detetar o branco contra o verde — muda de ângulo para apanhar reflexos de luz.',
-      'Em rough muito denso, a bola pode ter ricocheteado mais para a frente do que parece — alarga a zona de busca 10 metros à frente.',
-      'Olha para as "corredores" naturais onde a bola pode ter rolado mesmo dentro da relva densa.'
-    ]
-  },
-  water: {
-    icon: '💧',
-    name: 'ÁGUA',
-    tips: [
-      'Verifica sempre as margens antes de assumir que foi para a água — muitas bolas param mesmo na beira.',
-      'Se entrou em água pouco funda, usa a câmera com o zoom máximo para detetar o branco no fundo.',
-      'Bolas flutuam durante algum tempo — verifica se há corrente que as possa ter levado para uma margem.',
-      'A linha de regra de golfe permite-te soltar a 2 tacos de distância do ponto de entrada, do lado da margem.',
-      'Nas margens lodosas, a bola pode ter afundado mas deixado uma marca visível no lodo.'
-    ]
-  },
-  trees: {
-    icon: '🌲',
-    name: 'ÁRVORES',
-    tips: [
-      'Olha para CIMA primeiro: a bola pode estar presa num ramo ou entre galhos.',
-      'Nota em que árvore a bola bateu — procura em redor da base dessa árvore em raio de 5 metros.',
-      'A bola pode ter ricocheteado em ângulos inesperados — procura fora da linha direta do batimento.',
-      'Em zonas com folhagem no chão, usa o pé para "varrer" suavemente as folhas em camadas.',
-      'A câmera AR funciona bem aqui: o contraste entre o branco da bola e a sombra das árvores é forte.'
-    ]
-  },
-  bunker: {
-    icon: '🏜️',
-    name: 'BUNKER',
-    tips: [
-      'A bola frequentemente afunda na areia — procura uma depressão ou marca de impacto circular.',
-      'Olha para as marcas de rastejo: em areia fina, a bola pode ter rolado até à parede do bunker.',
-      'Nas faces (paredes inclinadas do bunker), a bola pode estar semienterrada — usa a vista lateral.',
-      'Depois de chuva, a bola pode estar completamente enterrada — vasculha com os dedos na areia.',
-      'Verifica os cantos e a base da parede do bunker — é onde a bola acaba depois de bater na face.'
-    ]
-  },
-  fairway: {
-    icon: '⛳',
-    name: 'FAIRWAY',
-    tips: [
-      'Marca a posição com um outro objeto (taco, chapéu) antes de te aproximares para não perderes o ponto de referência.',
-      'Usa a câmera AR no fairway: o branco destaca-se facilmente no verde curto.',
-      'Mesmo no fairway, a bola pode ter rolado mais de 20 metros após o impacto no chão.',
-      'Verifica as zonas de divisa entre fairway e rough primeiro — é onde muitas bolas param.',
-      'Com sol forte, o branco da bola pode "desaparecer" por excesso de luz — usa óculos de sol polarizados.'
-    ]
-  },
-  green: {
-    icon: '🎯',
-    name: 'GREEN',
-    tips: [
-      'No green, a bola raramente vai longe — procura num raio de 3 metros do ponto de aterragem.',
-      'Verifica se a bola saiu do green para o fringe (anel de relva à volta) — é muito comum.',
-      'A câmera aqui é menos útil pelo contraste baixo; usa a vista rasante (agacha-te ao nível do solo).',
-      'A bola pode ter ido para o hoyo! Confirma sempre antes de continuar a procurar.',
-      'Em greens inclinados, a bola pode ter rolado vários metros — segue a linha de maior declive.'
-    ]
-  }
-};
+  // Critérios mais apertados para reduzir falsos positivos
+  const MIN_BRIGHTNESS   = 215;    // mais alto = só aceita branco mesmo
+  const MAX_SATURATION   = 28;     // baixo = rejeita cores (amarelo, verde, etc.)
+  const MIN_CLUSTER_PTS  = 6;      // mínimo de pontos brancos no cluster
+  const MAX_CLUSTER_PTS  = 120;    // máximo — evita detetar paredes/céu branco
+  const MIN_RADIUS_PX    = 8;      // raio mínimo na imagem reduzida
+  const MAX_RADIUS_PX    = 35;     // raio máximo — bola de golfe é pequena
+  const MIN_CIRCULARITY  = 0.55;   // quão circular tem de ser (0=qualquer, 1=círculo perfeito)
 
-// ===== NAVIGATION =====
-function showScreen(id, btn) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-  btn.classList.add('active');
+  let video, canvas, ctx;
+  let scanning = false;
+  let scanTimer = null;
+  let detections = [];
+  let detectionId = 0;
+  let stats = { found: 0, rejected: 0, detected: 0 };
+  let isProcessing = false;
 
-  if (id === 'cam-screen') {
-    startCamera();
-  } else {
-    stopCamera();
-  }
-}
+  async function startCamera() {
+    document.getElementById('startScreen').style.display = 'none';
+    video  = document.getElementById('video');
+    canvas = document.getElementById('canvas');
+    ctx    = canvas.getContext('2d', { willReadFrequently: true });
 
-// ===== CAMERA =====
-async function startCamera() {
-  const noCam = document.getElementById('no-cam-msg');
-  try {
-    if (videoStream) return;
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } }
-    });
-    videoStream = stream;
-    const video = document.getElementById('video');
-    video.srcObject = stream;
-    noCam.style.display = 'none';
-    startDetection();
-  } catch (e) {
-    noCam.style.display = 'flex';
-    console.log('Camera error:', e);
-  }
-}
-
-function stopCamera() {
-  if (videoStream) {
-    videoStream.getTracks().forEach(t => t.stop());
-    videoStream = null;
-  }
-  if (detectionInterval) {
-    clearInterval(detectionInterval);
-    detectionInterval = null;
-  }
-  clearDetectionBoxes();
-}
-
-// ===== DETECTION (Color-based) =====
-function startDetection() {
-  const video = document.getElementById('video');
-  const canvas = document.getElementById('canvas-overlay');
-  const ctx = canvas.getContext('2d');
-
-  detectionInterval = setInterval(() => {
-    if (!video.videoWidth) return;
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    ctx.drawImage(video, 0, 0);
-
-    const blobs = detectWhiteBlobs(ctx, canvas.width, canvas.height);
-    renderDetections(blobs, canvas.width, canvas.height);
-  }, 300);
-}
-
-function detectWhiteBlobs(ctx, w, h) {
-  // Sample a grid of pixels
-  const imageData = ctx.getImageData(0, 0, w, h);
-  const data = imageData.data;
-  const blobs = [];
-  const gridSize = 8;
-
-  let cells = [];
-  for (let y = 0; y < h; y += gridSize) {
-    for (let x = 0; x < w; x += gridSize) {
-      const idx = (y * w + x) * 4;
-      const r = data[idx], g = data[idx+1], b = data[idx+2];
-      const brightness = (r + g + b) / 3;
-      const isWhite = r > 200 && g > 200 && b > 200 && brightness > 210;
-      if (isWhite) cells.push({ x, y });
-    }
-  }
-
-  // Cluster nearby white cells
-  const visited = new Set();
-  cells.forEach(cell => {
-    const key = `${cell.x},${cell.y}`;
-    if (visited.has(key)) return;
-
-    const cluster = [cell];
-    visited.add(key);
-    let i = 0;
-    while (i < cluster.length) {
-      const c = cluster[i];
-      cells.forEach(other => {
-        const ok = `${other.x},${other.y}`;
-        if (!visited.has(ok) && Math.abs(other.x - c.x) < 40 && Math.abs(other.y - c.y) < 40) {
-          cluster.push(other);
-          visited.add(ok);
-        }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }
       });
-      i++;
+      video.srcObject = stream;
+      video.onloadedmetadata = () => setStatus('Pronto', true);
+    } catch(e) {
+      document.getElementById('noCameraMsg').style.display = 'flex';
+      setStatus('Sem câmara', false);
     }
-
-    if (cluster.length >= 3 && cluster.length <= 80) {
-      const xs = cluster.map(c => c.x);
-      const ys = cluster.map(c => c.y);
-      const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
-      const cy = (Math.min(...ys) + Math.max(...ys)) / 2;
-      const size = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys));
-      blobs.push({ cx, cy, size: Math.max(size, 20) });
-    }
-  });
-
-  return blobs.slice(0, 5); // max 5 detections
-}
-
-function renderDetections(blobs, canvasW, canvasH) {
-  const video = document.getElementById('video');
-  const container = document.getElementById('cam-screen');
-  const rect = video.getBoundingClientRect();
-  const scaleX = rect.width / canvasW;
-  const scaleY = rect.height / canvasH;
-
-  // Remove old boxes
-  document.querySelectorAll('.detection-box').forEach(b => b.remove());
-
-  const statusEl = document.getElementById('detect-status');
-
-  if (blobs.length === 0) {
-    statusEl.textContent = 'A procurar bolas brancas...';
-    return;
   }
 
-  statusEl.textContent = `${blobs.length} objeto${blobs.length > 1 ? 's' : ''} branco${blobs.length > 1 ? 's' : ''} detetado${blobs.length > 1 ? 's' : ''}`;
+  function setStatus(text, active) {
+    const p = document.getElementById('statusPill');
+    p.textContent = text;
+    p.className = 'status-pill' + (active ? ' active' : '');
+  }
 
-  blobs.forEach((blob, i) => {
-    const box = document.createElement('div');
-    box.className = 'detection-box';
-    const bx = blob.cx * scaleX + rect.left;
-    const by = blob.cy * scaleY + rect.top;
-    const bs = blob.size * Math.max(scaleX, scaleY) + 20;
-    box.style.left = (bx - bs / 2) + 'px';
-    box.style.top = (by - bs / 2) + 'px';
-    box.style.width = bs + 'px';
-    box.style.height = bs + 'px';
-
-    const label = document.createElement('div');
-    label.className = 'detection-label';
-    label.textContent = `BOLA? ${Math.round(60 + Math.random() * 35)}%`;
-    box.appendChild(label);
-    container.appendChild(box);
-  });
-}
-
-function clearDetectionBoxes() {
-  document.querySelectorAll('.detection-box').forEach(b => b.remove());
-}
-
-async function captureAndAnalyze() {
-  const btn = document.getElementById('capture-btn');
-  btn.textContent = '🔍 A analisar...';
-  btn.disabled = true;
-
-  setTimeout(() => {
-    const detections = document.querySelectorAll('.detection-box').length;
-    if (detections > 0) {
-      showToast(`${detections} possível${detections > 1 ? 'is' : ''} bola${detections > 1 ? 's' : ''} detetada${detections > 1 ? 's' : ''}!`);
+  function toggleScan() {
+    scanning = !scanning;
+    const btn  = document.getElementById('btnScan');
+    if (scanning) {
+      btn.classList.add('scanning');
+      setStatus('A detectar...', true);
+      runScan();
+      scanTimer = setInterval(runScan, SCAN_INTERVAL_MS);
     } else {
-      showToast('Nenhuma bola detetada. Muda de ângulo!');
+      btn.classList.remove('scanning');
+      setStatus('Pausado', false);
+      clearInterval(scanTimer);
+      animateProgress(0);
     }
-    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><circle cx="12" cy="12" r="3"/><path d="M6.3 6.3a8 8 0 1 0 11.4 0"/></svg> Analisar Frame`;
-    btn.disabled = false;
-  }, 1200);
-}
+  }
 
-function markBallFound() {
-  changeCount(1);
-  showToast('🎉 +1 bola encontrada!');
-}
+  function animateProgress(pct) {
+    const bar = document.getElementById('scanProgress');
+    bar.style.width = pct + '%';
+    bar.className = 'scan-progress' + (pct > 0 && pct < 100 ? ' animating' : '');
+  }
 
-// ===== MAP =====
-let tempPinPos = null;
+  async function runScan() {
+    if (!video || video.readyState < 2 || isProcessing) return;
+    if (detections.length >= MAX_DETECTIONS) return;
 
-function mapTapped(e) {
-  const map = document.getElementById('map');
-  const rect = map.getBoundingClientRect();
-  const x = ((e.clientX - rect.left) / rect.width * 100).toFixed(1);
-  const y = ((e.clientY - rect.top) / rect.height * 100).toFixed(1);
-  tempPinPos = { x, y };
-  document.getElementById('add-pin-panel').classList.add('visible');
-}
+    isProcessing = true;
+    animateProgress(30);
 
-function selectPinType(btn, type) {
-  document.querySelectorAll('.pin-type-btn').forEach(b => b.classList.remove('selected'));
-  btn.classList.add('selected');
-  selectedPinType = type;
-}
+    // Draw video to canvas at reduced size
+    const W = Math.floor(video.videoWidth  * ANALYSIS_SCALE) || Math.floor(video.clientWidth  * ANALYSIS_SCALE);
+    const H = Math.floor(video.videoHeight * ANALYSIS_SCALE) || Math.floor(video.clientHeight * ANALYSIS_SCALE);
+    canvas.width  = W;
+    canvas.height = H;
+    ctx.drawImage(video, 0, 0, W, H);
 
-function confirmPin() {
-  if (!tempPinPos) return;
-  const map = document.getElementById('map');
-  const pin = document.createElement('div');
-  pin.className = `map-pin ${selectedPinType}`;
-  pin.style.left = tempPinPos.x + '%';
-  pin.style.top = tempPinPos.y + '%';
-  const emojis = { found: '⛳', lost: '❌', search: '🔍' };
-  const labels = { found: 'Encontrada', lost: 'Perdida', search: 'A procurar' };
-  pin.innerHTML = `<div class="map-pin-inner">${emojis[selectedPinType]}</div>`;
-  pin.title = labels[selectedPinType];
-  pin.onclick = (e) => {
-    e.stopPropagation();
-    if (confirm(`Remover marcador: "${labels[selectedPinType]}"?`)) {
-      pin.remove();
-      pinCount--;
-      updateStats();
+    animateProgress(60);
+
+    const imageData = ctx.getImageData(0, 0, W, H);
+    const candidates = findGolfBalls(imageData, W, H);
+
+    animateProgress(90);
+
+    const containerRect = document.getElementById('cameraContainer').getBoundingClientRect();
+
+    candidates.forEach(c => {
+      // Scale back to display coordinates
+      const px = (c.x / W) * containerRect.width;
+      const py = (c.y / H) * containerRect.height;
+      const displayRadius = (c.radius / ANALYSIS_SCALE) * 1.6;
+
+      // Avoid duplicate detections nearby
+      const tooClose = detections.some(d => {
+        const dx = d.px - px, dy = d.py - py;
+        return Math.sqrt(dx*dx + dy*dy) < 80;
+      });
+
+      if (!tooClose && detections.length < MAX_DETECTIONS) {
+        addDetection(px, py, displayRadius, c.score);
+      }
+    });
+
+    animateProgress(100);
+    setTimeout(() => animateProgress(0), 400);
+    isProcessing = false;
+  }
+
+  function findGolfBalls(imageData, W, H) {
+    const data = imageData.data;
+    const STEP = 3; // sample every 3px in reduced image
+    const cellSize = 12;
+    const cellsX = Math.ceil(W / cellSize);
+    const cellsY = Math.ceil(H / cellSize);
+    const cells  = new Array(cellsX * cellsY).fill(0);
+    const cellCx = new Array(cellsX * cellsY).fill(0);
+    const cellCy = new Array(cellsX * cellsY).fill(0);
+
+    // Pass 1: vote into grid cells
+    for (let y = 1; y < H - 1; y += STEP) {
+      for (let x = 1; x < W - 1; x += STEP) {
+        const i = (y * W + x) * 4;
+        const r = data[i], g = data[i+1], b = data[i+2];
+        const brightness  = (r + g + b) / 3;
+        const maxC = Math.max(r,g,b);
+        const saturation  = maxC < 10 ? 0 : ((maxC - Math.min(r,g,b)) / maxC) * 100;
+
+        if (brightness >= MIN_BRIGHTNESS && saturation <= MAX_SATURATION) {
+          const cx = Math.floor(x / cellSize);
+          const cy = Math.floor(y / cellSize);
+          const ci = cy * cellsX + cx;
+          cells[ci]++;
+          cellCx[ci] += x;
+          cellCy[ci] += y;
+        }
+      }
     }
-  };
-  map.appendChild(pin);
-  pinCount++;
-  updateStats();
-  cancelPin();
-  showToast('Marcador adicionado!');
-}
 
-function cancelPin() {
-  document.getElementById('add-pin-panel').classList.remove('visible');
-  tempPinPos = null;
-}
+    // Pass 2: find connected white clusters
+    const clusters = [];
+    const visited  = new Set();
 
-function clearPins() {
-  if (!confirm('Limpar todos os marcadores?')) return;
-  document.querySelectorAll('.map-pin').forEach(p => p.remove());
-  pinCount = 0;
-  updateStats();
-  showToast('Mapa limpo');
-}
+    for (let cy = 0; cy < cellsY; cy++) {
+      for (let cx = 0; cx < cellsX; cx++) {
+        const ci = cy * cellsX + cx;
+        if (cells[ci] < 2 || visited.has(ci)) continue;
 
-// ===== TIPS =====
-function showTips(type) {
-  const t = tipsData[type];
-  const el = document.getElementById('tips-content');
-  el.innerHTML = `
-    <div class="tips-card-header">
-      <span>${t.icon}</span>
-      <h2>${t.name}</h2>
-    </div>
-    ${t.tips.map((tip, i) => `
-      <div class="tip-item">
-        <div class="tip-number">${i + 1}</div>
-        <div class="tip-text">${tip}</div>
+        // BFS flood fill
+        const queue   = [ci];
+        const cluster = [];
+        visited.add(ci);
+
+        while (queue.length) {
+          const cur = queue.shift();
+          cluster.push(cur);
+          const ccx = cur % cellsX;
+          const ccy = Math.floor(cur / cellsX);
+
+          for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+              if (dx === 0 && dy === 0) continue;
+              const nx = ccx + dx, ny = ccy + dy;
+              if (nx < 0 || ny < 0 || nx >= cellsX || ny >= cellsY) continue;
+              const ni = ny * cellsX + nx;
+              if (!visited.has(ni) && cells[ni] >= 1) {
+                visited.add(ni);
+                queue.push(ni);
+              }
+            }
+          }
+        }
+
+        if (cluster.length < MIN_CLUSTER_PTS || cluster.length > MAX_CLUSTER_PTS) continue;
+
+        // Compute centroid
+        let sumX = 0, sumY = 0, totalPts = 0;
+        cluster.forEach(ci => {
+          const pts = cells[ci];
+          sumX     += cellCx[ci];
+          sumY     += cellCy[ci];
+          totalPts += pts;
+        });
+        const meanX = sumX / totalPts;
+        const meanY = sumY / totalPts;
+
+        // Estimate bounding box for circularity check
+        let minX = W, maxX = 0, minY = H, maxY = 0;
+        cluster.forEach(ci => {
+          const ccx2 = (ci % cellsX) * cellSize;
+          const ccy2 = Math.floor(ci / cellsX) * cellSize;
+          minX = Math.min(minX, ccx2);
+          maxX = Math.max(maxX, ccx2 + cellSize);
+          minY = Math.min(minY, ccy2);
+          maxY = Math.max(maxY, ccy2 + cellSize);
+        });
+
+        const bboxW   = maxX - minX;
+        const bboxH   = maxY - minY;
+        const aspect  = Math.min(bboxW, bboxH) / Math.max(bboxW, bboxH);
+        const radius  = (bboxW + bboxH) / 4;
+
+        // Circularity: compare cluster cell count to expected circle area
+        const expectedCells = Math.PI * (radius / cellSize) ** 2;
+        const circularity   = Math.min(cluster.length / expectedCells, 1);
+
+        if (radius < MIN_RADIUS_PX || radius > MAX_RADIUS_PX) continue;
+        if (aspect < MIN_CIRCULARITY) continue;
+        if (circularity < MIN_CIRCULARITY) continue;
+
+        // Score: higher is better candidate
+        const score = Math.round((aspect + circularity) / 2 * 100);
+
+        clusters.push({ x: meanX, y: meanY, radius, score });
+      }
+    }
+
+    // Sort by score, return best candidates
+    clusters.sort((a,b) => b.score - a.score);
+    return clusters.slice(0, 2);
+  }
+
+  function addDetection(px, py, radius, score) {
+    const id = ++detectionId;
+    const r  = Math.max(Math.min(radius, 90), 34);
+
+    detections.push({ id, px, py });
+    stats.detected++;
+    updateStats();
+
+    const layer = document.getElementById('detectionsLayer');
+    const el    = document.createElement('div');
+    el.className = 'detection';
+    el.id = `det-${id}`;
+    el.style.left = px + 'px';
+    el.style.top  = py + 'px';
+
+    el.innerHTML = `
+      <div class="detection-ring" style="width:${r*2}px;height:${r*2}px;">
+        <div class="detection-label">Bola?</div>
       </div>
-    `).join('')}
-  `;
-  document.getElementById('terrain-tips').classList.add('visible');
-  setTimeout(() => {
-    document.getElementById('terrain-tips').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }, 100);
-}
+      <div class="detection-actions">
+        <button class="btn-confirm" onclick="confirmDetection(${id})">✓</button>
+        <button class="btn-reject"  onclick="rejectDetection(${id})">✕</button>
+      </div>
+    `;
 
-// ===== STATS =====
-function changeCount(delta) {
-  ballCount = Math.max(0, ballCount + delta);
-  if (ballCount > sessionRecord) sessionRecord = ballCount;
-  totalBalls = Math.max(totalBalls, ballCount);
-  updateStats();
-  if (delta > 0) showToast(`+${delta} bola${delta > 1 ? 's' : ''} ⛳`);
-}
+    layer.appendChild(el);
+    updatePending();
+    setTimeout(() => removeDetection(id, false), AUTO_REMOVE_MS);
+  }
 
-function updateStats() {
-  document.getElementById('big-count').textContent = ballCount;
-  document.getElementById('header-count').textContent = ballCount;
-  document.getElementById('stat-total').textContent = totalBalls;
-  document.getElementById('stat-sessions').textContent = 1;
-  document.getElementById('stat-record').textContent = sessionRecord;
-  document.getElementById('stat-pins').textContent = pinCount;
+  function confirmDetection(id) {
+    stats.found++;
+    showToast('⛳ Bola confirmada!', 'success');
+    removeDetection(id, true);
+    updateStats();
+  }
 
-  // Update history
-  const historyList = document.getElementById('history-list');
-  const historyCount = historyList.querySelector('.history-count');
-  if (historyCount) historyCount.textContent = ballCount;
-}
+  function rejectDetection(id) {
+    stats.rejected++;
+    showToast('✕ Não é uma bola', 'reject');
+    removeDetection(id, true);
+    updateStats();
+  }
 
-// ===== TOAST =====
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('visible');
-  setTimeout(() => t.classList.remove('visible'), 2500);
-}
+  function removeDetection(id, animate) {
+    const el = document.getElementById(`det-${id}`);
+    if (!el) return;
+    detections = detections.filter(d => d.id !== id);
+    if (animate) {
+      el.style.transition = 'transform 0.25s, opacity 0.25s';
+      el.style.transform  = 'translate(-50%, -50%) scale(0)';
+      el.style.opacity    = '0';
+      setTimeout(() => el.remove(), 260);
+    } else {
+      el.remove();
+    }
+    updatePending();
+  }
 
-// ===== INIT =====
-startCamera();
+  function updateStats() {
+    document.getElementById('countFound').textContent    = stats.found;
+    document.getElementById('countRejected').textContent = stats.rejected;
+    document.getElementById('countDetected').textContent = stats.detected;
+  }
+
+  function updatePending() {
+    document.getElementById('countPending').textContent = detections.length;
+  }
+
+  function showToast(msg, type) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className   = `toast ${type} show`;
+    setTimeout(() => { t.className = 'toast'; }, 2500);
+  }
 </script>
 </body>
 </html>
