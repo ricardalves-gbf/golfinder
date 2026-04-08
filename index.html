@@ -4,10 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Golf Ball Finder</title>
-
-<!-- Roboflow inferencejs — client-side inference -->
-<script src="https://cdn.roboflow.com/0.2.26/roboflow.js"></script>
-
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=DM+Mono:wght@300;400&display=swap');
 
@@ -48,6 +44,7 @@
 
   .camera-container { flex: 1; position: relative; overflow: hidden; min-height: 0; }
   #video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  #canvas { display: none; }
 
   .corner { position: absolute; width: 24px; height: 24px; pointer-events: none; opacity: 0.5; z-index: 5; }
   .corner-tl { top: 12px;    left: 12px;  border-top: 2px solid var(--gold); border-left: 2px solid var(--gold); }
@@ -60,10 +57,7 @@
   .detection-card {
     position: absolute;
     pointer-events: all;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
     transform: translate(-50%, -50%);
     animation: popIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
@@ -77,9 +71,7 @@
     border: 2.5px solid var(--gold);
     box-shadow: 0 0 0 1px rgba(201,168,76,0.2), 0 0 20px rgba(201,168,76,0.5);
     animation: pulse 1.8s ease-in-out infinite;
-    position: relative;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
+    position: relative; flex-shrink: 0;
   }
   @keyframes pulse {
     0%,100% { box-shadow: 0 0 0 1px rgba(201,168,76,0.2), 0 0 16px rgba(201,168,76,0.5); }
@@ -95,39 +87,31 @@
 
   .detection-actions {
     display: flex; gap: 16px; align-items: center;
-    background: rgba(0,0,0,0.55);
-    backdrop-filter: blur(6px);
+    background: rgba(0,0,0,0.55); backdrop-filter: blur(6px);
     padding: 8px 16px; border-radius: 40px;
     border: 1px solid rgba(255,255,255,0.1);
   }
-
   .btn-confirm, .btn-reject {
     width: 48px; height: 48px; border-radius: 50%;
     border: none; cursor: pointer; font-size: 22px;
     display: flex; align-items: center; justify-content: center;
-    transition: transform 0.15s; box-shadow: 0 2px 12px rgba(0,0,0,0.4);
-    flex-shrink: 0;
+    transition: transform 0.15s; box-shadow: 0 2px 12px rgba(0,0,0,0.4); flex-shrink: 0;
   }
   .btn-confirm { background: var(--fairway); color: white; }
   .btn-reject  { background: var(--danger);  color: white; }
   .btn-confirm:active, .btn-reject:active { transform: scale(0.85); }
-
   .btn-wrap { display: flex; flex-direction: column; align-items: center; gap: 4px; }
   .btn-label { font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.4); }
 
   .loading-overlay {
-    position: absolute; inset: 0;
-    background: rgba(10,20,10,0.88);
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
+    position: absolute; inset: 0; background: rgba(10,20,10,0.88);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
     gap: 20px; z-index: 20;
   }
   .loading-spinner {
     width: 56px; height: 56px;
-    border: 3px solid rgba(201,168,76,0.2);
-    border-top-color: var(--gold);
-    border-radius: 50%;
-    animation: spin 0.9s linear infinite;
+    border: 3px solid rgba(201,168,76,0.2); border-top-color: var(--gold);
+    border-radius: 50%; animation: spin 0.9s linear infinite;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
   .loading-text { font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; color: rgba(255,255,255,0.5); text-align: center; line-height: 2.2; }
@@ -173,10 +157,9 @@
   .start-title span { color: var(--gold); font-weight: 600; display: block; }
   .start-desc { font-size: 12px; letter-spacing: 0.04em; color: rgba(255,255,255,0.4); text-align: center; line-height: 1.9; max-width: 280px; }
   .btn-start {
-    background: var(--gold); color: var(--green-deep); border: none;
-    padding: 16px 44px; font-family: 'DM Mono', monospace;
-    font-size: 13px; letter-spacing: 0.15em; text-transform: uppercase;
-    border-radius: 40px; cursor: pointer;
+    background: var(--gold); color: var(--green-deep); border: none; padding: 16px 44px;
+    font-family: 'DM Mono', monospace; font-size: 13px; letter-spacing: 0.15em;
+    text-transform: uppercase; border-radius: 40px; cursor: pointer;
     box-shadow: 0 4px 20px rgba(201,168,76,0.3); transition: all 0.2s;
   }
   .btn-start:active { transform: scale(0.96); }
@@ -201,26 +184,27 @@
   <div class="start-icon">⛳</div>
   <div class="start-title">Golf Ball<span>Finder</span></div>
   <p class="start-desc">
-    IA treinada especificamente para bolas de golfe.<br>
+    IA treinada com as tuas bolas de golfe.<br>
     Confirma ✓ ou rejeita ✕ cada detecção.<br><br>
-    <em>O modelo demora ~15s a carregar na 1ª vez.</em>
+    <em>Requer ligação à internet.</em>
   </p>
   <button class="btn-start" onclick="startApp()">Iniciar</button>
 </div>
 
 <header>
   <div class="logo">Golf<span>Finder</span></div>
-  <div class="status-pill" id="statusPill">A carregar...</div>
+  <div class="status-pill" id="statusPill">A iniciar...</div>
 </header>
 
 <div class="camera-container" id="cameraContainer">
   <video id="video" autoplay playsinline muted></video>
+  <canvas id="canvas"></canvas>
 
   <div class="loading-overlay" id="loadingOverlay" style="display:none">
     <div class="loading-spinner"></div>
     <div class="loading-text">
-      <strong>A carregar modelo</strong>
-      Treinado com as tuas bolas de golfe
+      <strong>A ligar à câmara</strong>
+      Aguarda um momento...
     </div>
   </div>
 
@@ -266,15 +250,16 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  const ROBOFLOW_API_KEY  = "rf_eA0aWwQ9NGWrYbzbDGc4V5tBDlo2";
-  const ROBOFLOW_MODEL    = "golf-ball-detector-szjkj";
-  const ROBOFLOW_VERSION  = 1;
-  const MIN_CONFIDENCE    = 0.4;
-  const SCAN_INTERVAL_MS  = 1500;
-  const MAX_DETECTIONS    = 3;
-  const AUTO_REMOVE_MS    = 30000;
+  // Roboflow hosted API — envia frame como imagem base64, recebe previsões
+  const API_KEY       = "rf_eA0aWwQ9NGWrYbzbDGc4V5tBDlo2";
+  const MODEL_ID      = "golf-ball-detector-szjkj";
+  const VERSION       = 1;
+  const MIN_CONF      = 0.35;
+  const SCAN_INTERVAL = 2000;  // 2 segundos entre scans
+  const MAX_DETS      = 3;
+  const AUTO_REMOVE   = 30000;
 
-  let video, model;
+  let video, canvas, ctx;
   let scanning = false, scanTimer = null;
   let detections = [], detectionId = 0, isProcessing = false;
   let stats = { found: 0, rejected: 0, detected: 0 };
@@ -282,41 +267,29 @@
   async function startApp() {
     document.getElementById('startScreen').style.display = 'none';
     document.getElementById('loadingOverlay').style.display = 'flex';
-    setStatus('A iniciar...', 'loading');
-    video = document.getElementById('video');
+    setStatus('A ligar câmara...', 'loading');
 
-    // Start camera
+    video  = document.getElementById('video');
+    canvas = document.getElementById('canvas');
+    ctx    = canvas.getContext('2d');
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 640 }, height: { ideal: 480 } }
       });
       video.srcObject = stream;
       await new Promise(r => video.onloadedmetadata = r);
-    } catch(e) {
-      setStatus('Sem câmara', 'error');
-      document.getElementById('loadingOverlay').innerHTML = `
-        <div style="font-size:48px">📷</div>
-        <div class="loading-text"><strong style="color:#e74c3c">Câmara bloqueada</strong>Abre no Safari e permite o acesso</div>`;
-      return;
-    }
-
-    // Load Roboflow model
-    try {
-      setStatus('A carregar IA...', 'loading');
-      model = await roboflow.auth({ publishable_key: ROBOFLOW_API_KEY })
-        .load({ model: ROBOFLOW_MODEL, version: ROBOFLOW_VERSION });
-
-      model.configure({ threshold: MIN_CONFIDENCE, overlap: 0.5, max_objects: MAX_DETECTIONS });
+      canvas.width  = video.videoWidth  || 640;
+      canvas.height = video.videoHeight || 480;
 
       document.getElementById('loadingOverlay').style.display = 'none';
       document.getElementById('btnScan').disabled = false;
       setStatus('Pronto', 'active');
     } catch(e) {
-      console.error('Model load error:', e);
-      setStatus('Erro IA', 'error');
+      setStatus('Sem câmara', 'error');
       document.getElementById('loadingOverlay').innerHTML = `
-        <div style="font-size:48px">⚠️</div>
-        <div class="loading-text"><strong style="color:#e74c3c">Erro ao carregar modelo</strong>Verifica a ligação e recarrega</div>`;
+        <div style="font-size:48px">📷</div>
+        <div class="loading-text"><strong style="color:#e74c3c">Câmara bloqueada</strong>Abre no Safari e permite o acesso</div>`;
     }
   }
 
@@ -327,14 +300,13 @@
   }
 
   function toggleScan() {
-    if (!model) return;
     scanning = !scanning;
     const btn = document.getElementById('btnScan');
     if (scanning) {
       btn.classList.add('scanning');
       setStatus('A detectar...', 'active');
       runDetection();
-      scanTimer = setInterval(runDetection, SCAN_INTERVAL_MS);
+      scanTimer = setInterval(runDetection, SCAN_INTERVAL);
     } else {
       btn.classList.remove('scanning');
       setStatus('Pausado', '');
@@ -343,41 +315,68 @@
   }
 
   async function runDetection() {
-    if (!model || !video || video.readyState < 2 || isProcessing) return;
-    if (detections.length >= MAX_DETECTIONS) return;
+    if (!video || video.readyState < 2 || isProcessing) return;
+    if (detections.length >= MAX_DETS) return;
     isProcessing = true;
 
     try {
-      const predictions = await model.detect(video);
+      // Capture frame from video
+      canvas.width  = video.videoWidth  || 640;
+      canvas.height = video.videoHeight || 480;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      // Convert to base64 JPEG (lower quality = faster upload)
+      const base64 = canvas.toDataURL('image/jpeg', 0.7).split(',')[1];
+
+      // Send to Roboflow hosted API
+      const response = await fetch(
+        `https://detect.roboflow.com/${MODEL_ID}/${VERSION}?api_key=${API_KEY}&confidence=${Math.round(MIN_CONF*100)}&overlap=50`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: base64
+        }
+      );
+
+      if (!response.ok) throw new Error(`API error: ${response.status}`);
+
+      const data = await response.json();
+      const predictions = data.predictions || [];
 
       const container = document.getElementById('cameraContainer');
       const rect   = container.getBoundingClientRect();
-      const scaleX = rect.width  / (video.videoWidth  || video.clientWidth);
-      const scaleY = rect.height / (video.videoHeight || video.clientHeight);
+      const scaleX = rect.width  / canvas.width;
+      const scaleY = rect.height / canvas.height;
 
       predictions.forEach(pred => {
-        // Roboflow returns: { x, y, width, height, confidence, class }
-        const px = pred.bbox.x * scaleX;
-        const py = pred.bbox.y * scaleY;
-        const r  = Math.max(pred.bbox.width, pred.bbox.height) / 2 * Math.max(scaleX, scaleY);
+        if (pred.confidence < MIN_CONF) return;
+
+        // Roboflow returns center x,y + width,height
+        const px = pred.x * scaleX;
+        const py = pred.y * scaleY;
+        const r  = Math.max(pred.width, pred.height) / 2 * Math.max(scaleX, scaleY);
 
         const tooClose = detections.some(d => {
           const dx = d.px - px, dy = d.py - py;
           return Math.sqrt(dx*dx + dy*dy) < 80;
         });
 
-        if (!tooClose && detections.length < MAX_DETECTIONS) {
+        if (!tooClose && detections.length < MAX_DETS) {
           addDetection(px, py, r, Math.round(pred.confidence * 100));
         }
       });
-    } catch(e) { console.error('Detection error:', e); }
+
+    } catch(e) {
+      console.error('Detection error:', e);
+      setStatus('Erro API', 'error');
+    }
 
     isProcessing = false;
   }
 
   function addDetection(px, py, radius, confidence) {
     const id = ++detectionId;
-    const r  = Math.max(Math.min(radius * 1.5, 100), 36);
+    const r  = Math.max(Math.min(radius * 1.5, 110), 36);
 
     detections.push({ id, px, py });
     stats.detected++;
@@ -385,7 +384,7 @@
 
     const container = document.getElementById('cameraContainer');
     const rect = container.getBoundingClientRect();
-    const margin = r + 80;
+    const margin = r + 90;
     const clampedPx = Math.max(r, Math.min(px, rect.width  - r));
     const clampedPy = Math.max(r, Math.min(py, rect.height - margin));
 
@@ -398,7 +397,7 @@
 
     el.innerHTML = `
       <div class="detection-label">⛳ Bola de golfe ${confidence}%</div>
-      <div class="detection-ring" style="width:${r*2}px; height:${r*2}px;"></div>
+      <div class="detection-ring" style="width:${r*2}px;height:${r*2}px;"></div>
       <div class="detection-actions">
         <div class="btn-wrap">
           <button class="btn-confirm" onclick="confirmDetection(${id})">✓</button>
@@ -412,7 +411,7 @@
 
     layer.appendChild(el);
     updatePending();
-    setTimeout(() => removeDetection(id, false), AUTO_REMOVE_MS);
+    setTimeout(() => removeDetection(id, false), AUTO_REMOVE);
   }
 
   function confirmDetection(id) {
