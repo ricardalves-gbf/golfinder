@@ -3,8 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Golf Ball Finder</title>
-<script src="https://cdn.roboflow.com/0.2.26/roboflow.js"></script>
+<title>GolfFinder v1.3</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=DM+Mono:wght@300;400&display=swap');
 
@@ -26,29 +25,40 @@
   }
 
   header {
-    padding: 16px 20px 12px;
+    padding: 12px 16px;
     display: flex; align-items: center; justify-content: space-between;
     background: linear-gradient(180deg, rgba(0,0,0,0.4) 0%, transparent 100%);
     z-index: 10; flex-shrink: 0;
   }
-  .logo { font-family: 'Cormorant Garamond', serif; font-size: 22px; font-weight: 300; letter-spacing: 0.05em; }
+  .logo { font-family: 'Cormorant Garamond', serif; font-size: 20px; font-weight: 300; letter-spacing: 0.05em; }
   .logo span { color: var(--gold); font-weight: 600; }
-
-  .status-pill {
-    font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
-    padding: 4px 10px; border: 1px solid rgba(255,255,255,0.2);
-    border-radius: 20px; color: rgba(255,255,255,0.6); transition: all 0.3s;
-    max-width: 160px; text-align: center;
-  }
-  .status-pill.active  { border-color: var(--fairway); color: var(--fairway); background: rgba(122,184,122,0.1); }
-  .status-pill.loading { border-color: var(--gold);    color: var(--gold);    background: rgba(201,168,76,0.1); }
-  .status-pill.error   { border-color: var(--danger);  color: #e74c3c; }
+  .version { font-size: 9px; color: rgba(255,255,255,0.3); letter-spacing: 0.1em; }
 
   .camera-container { flex: 1; position: relative; overflow: hidden; min-height: 0; }
   #video { width: 100%; height: 100%; object-fit: cover; display: block; }
   #canvas { display: none; }
 
-  .corner { position: absolute; width: 24px; height: 24px; pointer-events: none; opacity: 0.5; z-index: 5; }
+  /* DIAGNOSTIC LOG — visible on screen */
+  #diagLog {
+    position: absolute;
+    top: 8px; left: 8px; right: 8px;
+    background: rgba(0,0,0,0.75);
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(201,168,76,0.3);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 10px;
+    line-height: 1.8;
+    color: rgba(255,255,255,0.7);
+    z-index: 20;
+    max-height: 180px;
+    overflow-y: auto;
+  }
+  #diagLog .ok  { color: #7ab87a; }
+  #diagLog .err { color: #e74c3c; }
+  #diagLog .info { color: #c9a84c; }
+
+  .corner { position: absolute; width: 24px; height: 24px; pointer-events: none; opacity: 0.4; z-index: 5; }
   .corner-tl { top: 12px;    left: 12px;  border-top: 2px solid var(--gold); border-left: 2px solid var(--gold); }
   .corner-tr { top: 12px;    right: 12px; border-top: 2px solid var(--gold); border-right: 2px solid var(--gold); }
   .corner-bl { bottom: 12px; left: 12px;  border-bottom: 2px solid var(--gold); border-left: 2px solid var(--gold); }
@@ -66,25 +76,21 @@
     from { transform: translate(-50%, -50%) scale(0.3); opacity: 0; }
     to   { transform: translate(-50%, -50%) scale(1);   opacity: 1; }
   }
-
   .detection-ring {
     border-radius: 50%; border: 2.5px solid var(--gold);
     box-shadow: 0 0 0 1px rgba(201,168,76,0.2), 0 0 20px rgba(201,168,76,0.5);
-    animation: pulse 1.8s ease-in-out infinite;
-    position: relative; flex-shrink: 0;
+    animation: pulse 1.8s ease-in-out infinite; flex-shrink: 0;
   }
   @keyframes pulse {
     0%,100% { box-shadow: 0 0 0 1px rgba(201,168,76,0.2), 0 0 16px rgba(201,168,76,0.5); }
     50%      { box-shadow: 0 0 0 6px rgba(201,168,76,0.1), 0 0 30px rgba(201,168,76,0.7); }
   }
-
   .detection-label {
     font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
     color: var(--gold); white-space: nowrap;
     background: rgba(0,0,0,0.65); padding: 3px 10px; border-radius: 10px;
     border: 1px solid rgba(201,168,76,0.3);
   }
-
   .detection-actions {
     display: flex; gap: 16px; align-items: center;
     background: rgba(0,0,0,0.55); backdrop-filter: blur(6px);
@@ -103,20 +109,6 @@
   .btn-wrap { display: flex; flex-direction: column; align-items: center; gap: 4px; }
   .btn-label { font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.4); }
 
-  .loading-overlay {
-    position: absolute; inset: 0; background: rgba(10,20,10,0.9);
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 20px; z-index: 20;
-  }
-  .loading-spinner {
-    width: 56px; height: 56px;
-    border: 3px solid rgba(201,168,76,0.2); border-top-color: var(--gold);
-    border-radius: 50%; animation: spin 0.9s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .loading-text { font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; color: rgba(255,255,255,0.5); text-align: center; line-height: 2.2; }
-  .loading-text strong { color: var(--gold); display: block; font-size: 14px; margin-bottom: 4px; }
-
   .bottom-bar {
     padding: 14px 20px; flex-shrink: 0;
     background: linear-gradient(0deg, rgba(0,0,0,0.55) 0%, transparent 100%);
@@ -124,24 +116,24 @@
   }
   .stats { display: flex; gap: 20px; }
   .stat  { text-align: center; }
-  .stat-number { font-family: 'Cormorant Garamond', serif; font-size: 28px; font-weight: 600; color: var(--gold); line-height: 1; }
+  .stat-number { font-family: 'Cormorant Garamond', serif; font-size: 26px; font-weight: 600; color: var(--gold); line-height: 1; }
   .stat-label  { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.4); margin-top: 2px; }
 
   .btn-scan {
-    width: 68px; height: 68px; border-radius: 50%;
+    width: 64px; height: 64px; border-radius: 50%;
     background: var(--gold); border: none; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
     box-shadow: 0 0 0 4px rgba(201,168,76,0.2), 0 4px 20px rgba(0,0,0,0.4);
     transition: all 0.2s; flex-shrink: 0;
   }
   .btn-scan:active   { transform: scale(0.93); }
-  .btn-scan:disabled { opacity: 0.4; cursor: not-allowed; animation: none; }
+  .btn-scan:disabled { opacity: 0.4; cursor: not-allowed; }
   .btn-scan.scanning { background: var(--fairway); animation: scanPulse 1.5s ease-in-out infinite; }
   @keyframes scanPulse {
     0%,100% { box-shadow: 0 0 0 4px rgba(122,184,122,0.2), 0 4px 20px rgba(0,0,0,0.4); }
     50%      { box-shadow: 0 0 0 12px rgba(122,184,122,0.12), 0 4px 20px rgba(0,0,0,0.4); }
   }
-  .btn-scan svg { width: 30px; height: 30px; }
+  .btn-scan svg { width: 28px; height: 28px; }
 
   .start-screen {
     position: absolute; inset: 0; background: var(--green-deep);
@@ -149,27 +141,26 @@
     gap: 28px; z-index: 100; padding: 40px;
   }
   .start-icon {
-    width: 110px; height: 110px; border-radius: 50%;
+    width: 100px; height: 100px; border-radius: 50%;
     background: rgba(201,168,76,0.08); border: 1px solid rgba(201,168,76,0.25);
-    display: flex; align-items: center; justify-content: center; font-size: 52px;
+    display: flex; align-items: center; justify-content: center; font-size: 48px;
   }
-  .start-title { font-family: 'Cormorant Garamond', serif; font-size: 38px; font-weight: 300; text-align: center; line-height: 1.15; }
+  .start-title { font-family: 'Cormorant Garamond', serif; font-size: 36px; font-weight: 300; text-align: center; line-height: 1.15; }
   .start-title span { color: var(--gold); font-weight: 600; display: block; }
-  .start-desc { font-size: 12px; letter-spacing: 0.04em; color: rgba(255,255,255,0.4); text-align: center; line-height: 1.9; max-width: 280px; }
+  .start-desc { font-size: 12px; color: rgba(255,255,255,0.4); text-align: center; line-height: 1.9; max-width: 280px; }
   .btn-start {
     background: var(--gold); color: var(--green-deep); border: none; padding: 16px 44px;
     font-family: 'DM Mono', monospace; font-size: 13px; letter-spacing: 0.15em;
     text-transform: uppercase; border-radius: 40px; cursor: pointer;
     box-shadow: 0 4px 20px rgba(201,168,76,0.3); transition: all 0.2s;
   }
-  .btn-start:active { transform: scale(0.96); }
 
   .toast {
-    position: absolute; top: 70px; left: 50%;
-    transform: translateX(-50%) translateY(-16px);
+    position: absolute; bottom: 100px; left: 50%;
+    transform: translateX(-50%) translateY(16px);
     background: rgba(10,20,10,0.9); backdrop-filter: blur(8px);
     color: var(--cream); padding: 10px 22px; border-radius: 20px;
-    font-size: 12px; letter-spacing: 0.05em; opacity: 0; transition: all 0.3s;
+    font-size: 12px; opacity: 0; transition: all 0.3s;
     pointer-events: none; white-space: nowrap; z-index: 50;
     border: 1px solid rgba(255,255,255,0.08);
   }
@@ -183,36 +174,26 @@
 <div class="start-screen" id="startScreen">
   <div class="start-icon">⛳</div>
   <div class="start-title">Golf Ball<span>Finder</span></div>
-  <p class="start-desc">
-    IA treinada com as tuas bolas de golfe.<br>
-    Confirma ✓ ou rejeita ✕ cada detecção.<br><br>
-    <em>Requer ligação à internet.</em>
-  </p>
+  <p class="start-desc">v1.3 — Diagnóstico ativo<br>Mostra erros diretamente no ecrã.</p>
   <button class="btn-start" onclick="startApp()">Iniciar</button>
 </div>
 
 <header>
   <div class="logo">Golf<span>Finder</span></div>
-  <div class="status-pill" id="statusPill">A iniciar...</div>
+  <div class="version">v1.3</div>
 </header>
 
 <div class="camera-container" id="cameraContainer">
   <video id="video" autoplay playsinline muted></video>
   <canvas id="canvas"></canvas>
 
-  <div class="loading-overlay" id="loadingOverlay" style="display:none">
-    <div class="loading-spinner"></div>
-    <div class="loading-text" id="loadingText">
-      <strong>A carregar...</strong>
-      Aguarda um momento
-    </div>
-  </div>
+  <!-- Diagnostic log — visible on screen -->
+  <div id="diagLog">A iniciar diagnóstico...</div>
 
   <div class="corner corner-tl"></div>
   <div class="corner corner-tr"></div>
   <div class="corner corner-bl"></div>
   <div class="corner corner-br"></div>
-
   <div id="detectionsLayer"></div>
 </div>
 
@@ -250,29 +231,37 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  const API_KEY      = "rf_eA0aWwQ9NGWrYbzbDGc4V5tBDlo2";
-  const MODEL_ID     = "golf-ball-detector-szjkj";
-  const VERSION      = 1;
-  const MIN_CONF     = 30;   // 0-100
-  const SCAN_MS      = 2000;
-  const MAX_DETS     = 3;
-  const AUTO_REMOVE  = 30000;
+  const API_KEY  = "rf_eA0aWwQ9NGWrYbzbDGc4V5tBDlo2";
+  const MODEL_ID = "golf-ball-detector-szjkj";
+  const VERSION  = 1;
+  const MIN_CONF = 25;
+  const SCAN_MS  = 2500;
+  const MAX_DETS = 3;
+  const AUTO_REMOVE = 30000;
 
-  let video, canvas, ctx, rfModel;
+  let video, canvas, ctx;
   let scanning = false, scanTimer = null;
   let detections = [], detectionId = 0, isProcessing = false;
   let stats = { found: 0, rejected: 0, detected: 0 };
+  let logLines = [];
+
+  function log(msg, type = '') {
+    const time = new Date().toLocaleTimeString('pt', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    logLines.push(`<span class="${type}">[${time}] ${msg}</span>`);
+    if (logLines.length > 12) logLines.shift();
+    const el = document.getElementById('diagLog');
+    el.innerHTML = logLines.join('<br>');
+    el.scrollTop = el.scrollHeight;
+  }
 
   async function startApp() {
     document.getElementById('startScreen').style.display = 'none';
-    document.getElementById('loadingOverlay').style.display = 'flex';
-    setStatus('A ligar câmara...', 'loading');
-
     video  = document.getElementById('video');
     canvas = document.getElementById('canvas');
     ctx    = canvas.getContext('2d');
 
-    // 1. Start camera
+    log('A iniciar câmara...', 'info');
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: { ideal: 'environment' }, width: { ideal: 640 }, height: { ideal: 480 } }
@@ -281,44 +270,30 @@
       await new Promise(r => video.onloadedmetadata = r);
       canvas.width  = video.videoWidth  || 640;
       canvas.height = video.videoHeight || 480;
+      log(`Câmara OK — ${canvas.width}x${canvas.height}`, 'ok');
     } catch(e) {
-      setStatus('Sem câmara', 'error');
-      document.getElementById('loadingOverlay').innerHTML = `
-        <div style="font-size:48px">📷</div>
-        <div class="loading-text"><strong style="color:#e74c3c">Câmara bloqueada</strong>Abre no Safari e permite o acesso</div>`;
+      log('ERRO câmara: ' + e.message, 'err');
       return;
     }
 
-    // 2. Load Roboflow model
-    setLoading('A carregar IA...', 'Modelo treinado com bolas de golfe');
-    setStatus('A carregar IA...', 'loading');
-
+    // Test API connection
+    log('A testar ligação à API Roboflow...', 'info');
     try {
-      rfModel = await roboflow.auth({ publishable_key: API_KEY })
-        .load({ model: MODEL_ID, version: VERSION });
-      rfModel.configure({ threshold: MIN_CONF / 100, overlap: 0.5 });
-
-      document.getElementById('loadingOverlay').style.display = 'none';
-      document.getElementById('btnScan').disabled = false;
-      setStatus('Pronto', 'active');
+      const testResp = await fetch(
+        `https://detect.roboflow.com/${MODEL_ID}/${VERSION}?api_key=${API_KEY}&confidence=${MIN_CONF}`,
+        { method: 'GET' }
+      );
+      log(`API resposta: HTTP ${testResp.status}`, testResp.ok ? 'ok' : 'err');
+      if (!testResp.ok) {
+        const txt = await testResp.text();
+        log('API erro: ' + txt.slice(0, 80), 'err');
+      }
     } catch(e) {
-      console.error('Roboflow load error:', e);
-      // Fallback: use REST API instead
-      rfModel = null;
-      document.getElementById('loadingOverlay').style.display = 'none';
-      document.getElementById('btnScan').disabled = false;
-      setStatus('Pronto (API)', 'active');
+      log('ERRO ligação API: ' + e.message, 'err');
     }
-  }
 
-  function setLoading(title, subtitle) {
-    document.getElementById('loadingText').innerHTML = `<strong>${title}</strong>${subtitle}`;
-  }
-
-  function setStatus(text, type) {
-    const p = document.getElementById('statusPill');
-    p.textContent = text;
-    p.className = 'status-pill ' + (type || '');
+    document.getElementById('btnScan').disabled = false;
+    log('Pronto — carrega no botão para detectar', 'ok');
   }
 
   function toggleScan() {
@@ -326,12 +301,12 @@
     const btn = document.getElementById('btnScan');
     if (scanning) {
       btn.classList.add('scanning');
-      setStatus('A detectar...', 'active');
+      log('Scan iniciado', 'info');
       runDetection();
       scanTimer = setInterval(runDetection, SCAN_MS);
     } else {
       btn.classList.remove('scanning');
-      setStatus('Pausado', '');
+      log('Scan pausado', 'info');
       clearInterval(scanTimer);
     }
   }
@@ -342,60 +317,56 @@
     isProcessing = true;
 
     try {
-      let predictions = [];
+      canvas.width  = video.videoWidth  || 640;
+      canvas.height = video.videoHeight || 480;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const base64 = canvas.toDataURL('image/jpeg', 0.75).split(',')[1];
 
-      if (rfModel) {
-        // Use Roboflow.js SDK
-        const results = await rfModel.detect(video);
-        predictions = results.map(r => ({
-          x: r.bbox.x, y: r.bbox.y,
-          width: r.bbox.width, height: r.bbox.height,
-          confidence: r.confidence
-        }));
-      } else {
-        // Fallback: REST API via base64
-        canvas.width  = video.videoWidth  || 640;
-        canvas.height = video.videoHeight || 480;
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const base64 = canvas.toDataURL('image/jpeg', 0.7).split(',')[1];
+      log(`A enviar imagem ${canvas.width}x${canvas.height}...`, 'info');
 
-        const resp = await fetch(
-          `https://detect.roboflow.com/${MODEL_ID}/${VERSION}?api_key=${API_KEY}&confidence=${MIN_CONF}&overlap=50`,
-          { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: base64 }
-        );
-        const data = await resp.json();
-        predictions = data.predictions || [];
+      const resp = await fetch(
+        `https://detect.roboflow.com/${MODEL_ID}/${VERSION}?api_key=${API_KEY}&confidence=${MIN_CONF}&overlap=50`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: base64
+        }
+      );
+
+      log(`Resposta HTTP: ${resp.status}`, resp.ok ? 'ok' : 'err');
+
+      if (!resp.ok) {
+        const txt = await resp.text();
+        log('Erro: ' + txt.slice(0, 100), 'err');
+        isProcessing = false;
+        return;
+      }
+
+      const data = await resp.json();
+      const preds = data.predictions || [];
+      log(`Previsões recebidas: ${preds.length}`, preds.length > 0 ? 'ok' : 'info');
+
+      if (preds.length > 0) {
+        preds.forEach(p => log(`  → ${p.class} ${Math.round(p.confidence*100)}% @ (${Math.round(p.x)},${Math.round(p.y)})`, 'ok'));
       }
 
       const container = document.getElementById('cameraContainer');
       const rect   = container.getBoundingClientRect();
-      const vw     = video.videoWidth  || canvas.width  || 640;
-      const vh     = video.videoHeight || canvas.height || 480;
-      const scaleX = rect.width  / vw;
-      const scaleY = rect.height / vh;
+      const scaleX = rect.width  / canvas.width;
+      const scaleY = rect.height / canvas.height;
 
-      predictions.forEach(pred => {
-        const conf = pred.confidence >= 1 ? pred.confidence : pred.confidence;
-        if (conf < MIN_CONF / 100) return;
-
+      preds.forEach(pred => {
         const px = pred.x * scaleX;
         const py = pred.y * scaleY;
         const r  = Math.max(pred.width, pred.height) / 2 * Math.max(scaleX, scaleY);
-
-        const tooClose = detections.some(d => {
-          const dx = d.px - px, dy = d.py - py;
-          return Math.sqrt(dx*dx + dy*dy) < 80;
-        });
-
+        const tooClose = detections.some(d => Math.sqrt((d.px-px)**2 + (d.py-py)**2) < 80);
         if (!tooClose && detections.length < MAX_DETS) {
-          const confPct = conf > 1 ? Math.round(conf) : Math.round(conf * 100);
-          addDetection(px, py, r, confPct);
+          addDetection(px, py, r, Math.round(pred.confidence * 100));
         }
       });
 
     } catch(e) {
-      console.error('Detection error:', e);
-      setStatus('Erro: ' + e.message.slice(0,20), 'error');
+      log('ERRO fetch: ' + e.message, 'err');
     }
 
     isProcessing = false;
@@ -410,9 +381,8 @@
 
     const container = document.getElementById('cameraContainer');
     const rect = container.getBoundingClientRect();
-    const margin = r + 90;
     const cpx = Math.max(r, Math.min(px, rect.width  - r));
-    const cpy = Math.max(r, Math.min(py, rect.height - margin));
+    const cpy = Math.max(r, Math.min(py, rect.height - r - 90));
 
     const layer = document.getElementById('detectionsLayer');
     const el = document.createElement('div');
@@ -420,7 +390,6 @@
     el.id = `det-${id}`;
     el.style.left = cpx + 'px';
     el.style.top  = cpy + 'px';
-
     el.innerHTML = `
       <div class="detection-label">⛳ Bola de golfe ${confidence}%</div>
       <div class="detection-ring" style="width:${r*2}px;height:${r*2}px;"></div>
@@ -434,53 +403,42 @@
           <div class="btn-label">Não é</div>
         </div>
       </div>`;
-
     layer.appendChild(el);
     updatePending();
     setTimeout(() => removeDetection(id, false), AUTO_REMOVE);
   }
 
   function confirmDetection(id) {
-    stats.found++;
-    showToast('⛳ Bola confirmada!', 'success');
-    removeDetection(id, true);
-    updateStats();
+    stats.found++; showToast('⛳ Bola confirmada!', 'success');
+    removeDetection(id, true); updateStats();
   }
-
   function rejectDetection(id) {
-    stats.rejected++;
-    showToast('✕ Não é uma bola', 'reject');
-    removeDetection(id, true);
-    updateStats();
+    stats.rejected++; showToast('✕ Não é uma bola', 'reject');
+    removeDetection(id, true); updateStats();
   }
-
   function removeDetection(id, animate) {
     const el = document.getElementById(`det-${id}`);
     if (!el) return;
     detections = detections.filter(d => d.id !== id);
     if (animate) {
       el.style.transition = 'transform 0.25s, opacity 0.25s';
-      el.style.transform  = 'translate(-50%, -50%) scale(0)';
-      el.style.opacity    = '0';
+      el.style.transform = 'translate(-50%, -50%) scale(0)';
+      el.style.opacity = '0';
       setTimeout(() => el.remove(), 260);
     } else { el.remove(); }
     updatePending();
   }
-
   function updateStats() {
     document.getElementById('countFound').textContent    = stats.found;
     document.getElementById('countRejected').textContent = stats.rejected;
     document.getElementById('countDetected').textContent = stats.detected;
   }
-
   function updatePending() {
     document.getElementById('countPending').textContent = detections.length;
   }
-
   function showToast(msg, type) {
     const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.className = `toast ${type} show`;
+    t.textContent = msg; t.className = `toast ${type} show`;
     setTimeout(() => { t.className = 'toast'; }, 2500);
   }
 </script>
