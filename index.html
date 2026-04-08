@@ -3,7 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>GolfFinder v1.3</title>
+<title>GolfFinder v1.4</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
+
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=DM+Mono:wght@300;400&display=swap');
 
@@ -32,31 +36,26 @@
   }
   .logo { font-family: 'Cormorant Garamond', serif; font-size: 20px; font-weight: 300; letter-spacing: 0.05em; }
   .logo span { color: var(--gold); font-weight: 600; }
-  .version { font-size: 9px; color: rgba(255,255,255,0.3); letter-spacing: 0.1em; }
 
-  .camera-container { flex: 1; position: relative; overflow: hidden; min-height: 0; }
-  #video { width: 100%; height: 100%; object-fit: cover; display: block; }
-  #canvas { display: none; }
-
-  /* DIAGNOSTIC LOG — visible on screen */
-  #diagLog {
-    position: absolute;
-    top: 8px; left: 8px; right: 8px;
-    background: rgba(0,0,0,0.75);
-    backdrop-filter: blur(4px);
-    border: 1px solid rgba(201,168,76,0.3);
-    border-radius: 10px;
-    padding: 10px 12px;
-    font-size: 10px;
-    line-height: 1.8;
-    color: rgba(255,255,255,0.7);
-    z-index: 20;
-    max-height: 180px;
-    overflow-y: auto;
+  .status-pill {
+    font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+    padding: 4px 10px; border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 20px; color: rgba(255,255,255,0.6); transition: all 0.3s;
   }
-  #diagLog .ok  { color: #7ab87a; }
-  #diagLog .err { color: #e74c3c; }
-  #diagLog .info { color: #c9a84c; }
+  .status-pill.active  { border-color: var(--fairway); color: var(--fairway); background: rgba(122,184,122,0.1); }
+  .status-pill.loading { border-color: var(--gold);    color: var(--gold);    background: rgba(201,168,76,0.1); }
+
+  /* Camera fills remaining space */
+  .camera-container { flex: 1; position: relative; overflow: hidden; min-height: 0; }
+
+  #video { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  /* Overlay canvas — drawn on top of video in real time */
+  #overlay {
+    position: absolute; top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none; z-index: 4;
+  }
 
   .corner { position: absolute; width: 24px; height: 24px; pointer-events: none; opacity: 0.4; z-index: 5; }
   .corner-tl { top: 12px;    left: 12px;  border-top: 2px solid var(--gold); border-left: 2px solid var(--gold); }
@@ -64,51 +63,54 @@
   .corner-bl { bottom: 12px; left: 12px;  border-bottom: 2px solid var(--gold); border-left: 2px solid var(--gold); }
   .corner-br { bottom: 12px; right: 12px; border-bottom: 2px solid var(--gold); border-right: 2px solid var(--gold); }
 
-  #detectionsLayer { position: absolute; inset: 0; z-index: 5; pointer-events: none; }
+  /* Confirm/reject buttons layer */
+  #detectionsLayer { position: absolute; inset: 0; z-index: 6; pointer-events: none; }
 
   .detection-card {
     position: absolute; pointer-events: all;
-    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
     transform: translate(-50%, -50%);
-    animation: popIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    animation: popIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
   @keyframes popIn {
     from { transform: translate(-50%, -50%) scale(0.3); opacity: 0; }
     to   { transform: translate(-50%, -50%) scale(1);   opacity: 1; }
   }
-  .detection-ring {
-    border-radius: 50%; border: 2.5px solid var(--gold);
-    box-shadow: 0 0 0 1px rgba(201,168,76,0.2), 0 0 20px rgba(201,168,76,0.5);
-    animation: pulse 1.8s ease-in-out infinite; flex-shrink: 0;
-  }
-  @keyframes pulse {
-    0%,100% { box-shadow: 0 0 0 1px rgba(201,168,76,0.2), 0 0 16px rgba(201,168,76,0.5); }
-    50%      { box-shadow: 0 0 0 6px rgba(201,168,76,0.1), 0 0 30px rgba(201,168,76,0.7); }
-  }
-  .detection-label {
-    font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
-    color: var(--gold); white-space: nowrap;
-    background: rgba(0,0,0,0.65); padding: 3px 10px; border-radius: 10px;
-    border: 1px solid rgba(201,168,76,0.3);
-  }
+
   .detection-actions {
-    display: flex; gap: 16px; align-items: center;
-    background: rgba(0,0,0,0.55); backdrop-filter: blur(6px);
-    padding: 8px 16px; border-radius: 40px;
+    display: flex; gap: 14px; align-items: center;
+    background: rgba(0,0,0,0.6); backdrop-filter: blur(6px);
+    padding: 8px 14px; border-radius: 40px;
     border: 1px solid rgba(255,255,255,0.1);
   }
   .btn-confirm, .btn-reject {
-    width: 48px; height: 48px; border-radius: 50%;
-    border: none; cursor: pointer; font-size: 22px;
+    width: 46px; height: 46px; border-radius: 50%;
+    border: none; cursor: pointer; font-size: 20px;
     display: flex; align-items: center; justify-content: center;
     transition: transform 0.15s; box-shadow: 0 2px 12px rgba(0,0,0,0.4); flex-shrink: 0;
   }
   .btn-confirm { background: var(--fairway); color: white; }
   .btn-reject  { background: var(--danger);  color: white; }
   .btn-confirm:active, .btn-reject:active { transform: scale(0.85); }
-  .btn-wrap { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .btn-wrap { display: flex; flex-direction: column; align-items: center; gap: 3px; }
   .btn-label { font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.4); }
 
+  /* Loading overlay */
+  .loading-overlay {
+    position: absolute; inset: 0; background: rgba(10,20,10,0.92);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 20px; z-index: 20;
+  }
+  .loading-spinner {
+    width: 56px; height: 56px;
+    border: 3px solid rgba(201,168,76,0.2); border-top-color: var(--gold);
+    border-radius: 50%; animation: spin 0.9s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; color: rgba(255,255,255,0.5); text-align: center; line-height: 2.2; }
+  .loading-text strong { color: var(--gold); display: block; font-size: 14px; margin-bottom: 4px; }
+
+  /* Bottom bar */
   .bottom-bar {
     padding: 14px 20px; flex-shrink: 0;
     background: linear-gradient(0deg, rgba(0,0,0,0.55) 0%, transparent 100%);
@@ -135,6 +137,7 @@
   }
   .btn-scan svg { width: 28px; height: 28px; }
 
+  /* Start screen */
   .start-screen {
     position: absolute; inset: 0; background: var(--green-deep);
     display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -156,7 +159,7 @@
   }
 
   .toast {
-    position: absolute; bottom: 100px; left: 50%;
+    position: absolute; bottom: 110px; left: 50%;
     transform: translateX(-50%) translateY(16px);
     background: rgba(10,20,10,0.9); backdrop-filter: blur(8px);
     color: var(--cream); padding: 10px 22px; border-radius: 20px;
@@ -174,26 +177,36 @@
 <div class="start-screen" id="startScreen">
   <div class="start-icon">⛳</div>
   <div class="start-title">Golf Ball<span>Finder</span></div>
-  <p class="start-desc">v1.3 — Diagnóstico ativo<br>Mostra erros diretamente no ecrã.</p>
+  <p class="start-desc">
+    v1.4 — Deteção em tempo real<br>
+    IA corre diretamente no telemóvel.<br><br>
+    <em>Demora ~20s a carregar na 1ª vez.</em>
+  </p>
   <button class="btn-start" onclick="startApp()">Iniciar</button>
 </div>
 
 <header>
   <div class="logo">Golf<span>Finder</span></div>
-  <div class="version">v1.3</div>
+  <div class="status-pill loading" id="statusPill">v1.4</div>
 </header>
 
 <div class="camera-container" id="cameraContainer">
   <video id="video" autoplay playsinline muted></video>
-  <canvas id="canvas"></canvas>
+  <canvas id="overlay"></canvas>
 
-  <!-- Diagnostic log — visible on screen -->
-  <div id="diagLog">A iniciar diagnóstico...</div>
+  <div class="loading-overlay" id="loadingOverlay" style="display:none">
+    <div class="loading-spinner"></div>
+    <div class="loading-text" id="loadingText">
+      <strong>A carregar IA</strong>
+      Aguarda ~20 segundos
+    </div>
+  </div>
 
   <div class="corner corner-tl"></div>
   <div class="corner corner-tr"></div>
   <div class="corner corner-bl"></div>
   <div class="corner corner-br"></div>
+
   <div id="detectionsLayer"></div>
 </div>
 
@@ -231,214 +244,320 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  const API_KEY  = "iOEWpBHfOKpU6F7l0P8i";
-  const MODEL_ID = "golf-ball-detector-szjkj";
-  const VERSION  = 1;
-  const MIN_CONF = 25;
-  const SCAN_MS  = 2500;
-  const MAX_DETS = 3;
-  const AUTO_REMOVE = 30000;
+  // ── CONFIG ────────────────────────────────────────────────
+  const MIN_SCORE      = 0.25;   // confiança mínima COCO
+  const MIN_ASPECT     = 0.60;   // bounding box deve ser ~quadrada (bola = redonda)
+  const MAX_AREA_FRAC  = 0.08;   // bola não pode ocupar mais de 8% do frame
+  const MIN_AREA_FRAC  = 0.0003; // nem menos de 0.03% (demasiado pequena)
+  const FRAME_INTERVAL = 200;    // ms entre cada análise de frame (~5fps de deteção)
+  const CONFIRM_FRAMES = 2;      // bola tem de aparecer em X frames seguidos para ser assinalada
+  const DISAPPEAR_MS   = 1500;   // após quantos ms sem deteção remove a marcação
+  const AUTO_REMOVE_MS = 20000;  // botões desaparecem após 20s sem resposta
 
-  let video, canvas, ctx;
-  let scanning = false, scanTimer = null;
-  let detections = [], detectionId = 0, isProcessing = false;
+  let video, overlay, ctx, model;
+  let scanning    = false;
+  let animFrame   = null;
+  let lastRun     = 0;
+  let candidates  = {}; // tracks detections across frames: id → {px,py,r,frames,lastSeen}
+  let confirmed   = {}; // detections shown to user waiting for ✓/✕
+  let detectionId = 0;
   let stats = { found: 0, rejected: 0, detected: 0 };
-  let logLines = [];
 
-  function log(msg, type = '') {
-    const time = new Date().toLocaleTimeString('pt', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    logLines.push(`<span class="${type}">[${time}] ${msg}</span>`);
-    if (logLines.length > 12) logLines.shift();
-    const el = document.getElementById('diagLog');
-    el.innerHTML = logLines.join('<br>');
-    el.scrollTop = el.scrollHeight;
-  }
-
+  // ── STARTUP ───────────────────────────────────────────────
   async function startApp() {
     document.getElementById('startScreen').style.display = 'none';
-    video  = document.getElementById('video');
-    canvas = document.getElementById('canvas');
-    ctx    = canvas.getContext('2d');
+    document.getElementById('loadingOverlay').style.display = 'flex';
 
-    log('A iniciar câmara...', 'info');
+    video   = document.getElementById('video');
+    overlay = document.getElementById('overlay');
+    ctx     = overlay.getContext('2d');
 
+    // Camera
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 640 }, height: { ideal: 480 } }
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }
       });
       video.srcObject = stream;
       await new Promise(r => video.onloadedmetadata = r);
-      canvas.width  = video.videoWidth  || 640;
-      canvas.height = video.videoHeight || 480;
-      log(`Câmara OK — ${canvas.width}x${canvas.height}`, 'ok');
+      resizeOverlay();
+      setStatus('A carregar IA...', 'loading');
     } catch(e) {
-      log('ERRO câmara: ' + e.message, 'err');
+      setLoading('Câmara bloqueada', 'Abre no Safari e permite o acesso');
       return;
     }
 
-    // Test API connection
-    log('A testar ligação à API Roboflow...', 'info');
+    // Load model
     try {
-      const testResp = await fetch(
-        `https://detect.roboflow.com/${MODEL_ID}/${VERSION}?api_key=${API_KEY}&confidence=${MIN_CONF}`,
-        { method: 'GET' }
-      );
-      log(`API resposta: HTTP ${testResp.status}`, testResp.ok ? 'ok' : 'err');
-      if (!testResp.ok) {
-        const txt = await testResp.text();
-        log('API erro: ' + txt.slice(0, 80), 'err');
-      }
+      model = await cocoSsd.load({ base: 'mobilenet_v2' });
+      document.getElementById('loadingOverlay').style.display = 'none';
+      document.getElementById('btnScan').disabled = false;
+      setStatus('Pronto', 'active');
     } catch(e) {
-      log('ERRO ligação API: ' + e.message, 'err');
+      setLoading('Erro ao carregar IA', 'Verifica a ligação e recarrega');
     }
-
-    document.getElementById('btnScan').disabled = false;
-    log('Pronto — carrega no botão para detectar', 'ok');
   }
 
+  function resizeOverlay() {
+    const c = document.getElementById('cameraContainer');
+    overlay.width  = c.clientWidth;
+    overlay.height = c.clientHeight;
+  }
+
+  window.addEventListener('resize', resizeOverlay);
+
+  // ── SCAN LOOP ─────────────────────────────────────────────
   function toggleScan() {
     scanning = !scanning;
     const btn = document.getElementById('btnScan');
     if (scanning) {
       btn.classList.add('scanning');
-      log('Scan iniciado', 'info');
-      runDetection();
-      scanTimer = setInterval(runDetection, SCAN_MS);
+      setStatus('A detectar...', 'active');
+      loop();
     } else {
       btn.classList.remove('scanning');
-      log('Scan pausado', 'info');
-      clearInterval(scanTimer);
+      setStatus('Pausado', '');
+      if (animFrame) cancelAnimationFrame(animFrame);
+      ctx.clearRect(0, 0, overlay.width, overlay.height);
+      clearAllDetections();
     }
   }
 
-  async function runDetection() {
-    if (!video || video.readyState < 2 || isProcessing) return;
-    if (detections.length >= MAX_DETS) return;
-    isProcessing = true;
+  function loop() {
+    if (!scanning) return;
+    animFrame = requestAnimationFrame(async (ts) => {
+      if (ts - lastRun >= FRAME_INTERVAL) {
+        lastRun = ts;
+        await detect();
+      }
+      loop();
+    });
+  }
 
+  // ── DETECTION ─────────────────────────────────────────────
+  async function detect() {
+    if (!model || !video || video.readyState < 2) return;
+
+    let preds;
     try {
-      canvas.width  = video.videoWidth  || 640;
-      canvas.height = video.videoHeight || 480;
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const base64 = canvas.toDataURL('image/jpeg', 0.75).split(',')[1];
+      preds = await model.detect(video);
+    } catch(e) { return; }
 
-      log(`A enviar imagem ${canvas.width}x${canvas.height}...`, 'info');
+    const vw = video.videoWidth  || overlay.width;
+    const vh = video.videoHeight || overlay.height;
+    const sx = overlay.width  / vw;
+    const sy = overlay.height / vh;
+    const frameArea = vw * vh;
 
-      const resp = await fetch(
-        `https://detect.roboflow.com/${MODEL_ID}/${VERSION}?api_key=${API_KEY}&confidence=${MIN_CONF}&overlap=50`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: base64
-        }
-      );
+    // Filter: only sports balls with right shape and size
+    const balls = preds.filter(p => {
+      if (p.class !== 'sports ball') return false;
+      if (p.score  < MIN_SCORE)      return false;
+      const [,, bw, bh] = p.bbox;
+      const aspect = Math.min(bw, bh) / Math.max(bw, bh);
+      if (aspect < MIN_ASPECT) return false;
+      const areaFrac = (bw * bh) / frameArea;
+      if (areaFrac < MIN_AREA_FRAC || areaFrac > MAX_AREA_FRAC) return false;
+      return true;
+    });
 
-      log(`Resposta HTTP: ${resp.status}`, resp.ok ? 'ok' : 'err');
+    const now = Date.now();
 
-      if (!resp.ok) {
-        const txt = await resp.text();
-        log('Erro: ' + txt.slice(0, 100), 'err');
-        isProcessing = false;
-        return;
-      }
+    // Match detections to existing candidates
+    const matched = new Set();
+    balls.forEach(b => {
+      const [bx, by, bw, bh] = b.bbox;
+      const px = (bx + bw / 2) * sx;
+      const py = (by + bh / 2) * sy;
+      const r  = Math.max(bw, bh) / 2 * Math.max(sx, sy);
 
-      const data = await resp.json();
-      const preds = data.predictions || [];
-      log(`Previsões recebidas: ${preds.length}`, preds.length > 0 ? 'ok' : 'info');
-
-      if (preds.length > 0) {
-        preds.forEach(p => log(`  → ${p.class} ${Math.round(p.confidence*100)}% @ (${Math.round(p.x)},${Math.round(p.y)})`, 'ok'));
-      }
-
-      const container = document.getElementById('cameraContainer');
-      const rect   = container.getBoundingClientRect();
-      const scaleX = rect.width  / canvas.width;
-      const scaleY = rect.height / canvas.height;
-
-      preds.forEach(pred => {
-        const px = pred.x * scaleX;
-        const py = pred.y * scaleY;
-        const r  = Math.max(pred.width, pred.height) / 2 * Math.max(scaleX, scaleY);
-        const tooClose = detections.some(d => Math.sqrt((d.px-px)**2 + (d.py-py)**2) < 80);
-        if (!tooClose && detections.length < MAX_DETS) {
-          addDetection(px, py, r, Math.round(pred.confidence * 100));
-        }
+      // Find nearest existing candidate
+      let best = null, bestDist = 80;
+      Object.keys(candidates).forEach(id => {
+        const c = candidates[id];
+        const d = Math.hypot(c.px - px, c.py - py);
+        if (d < bestDist) { bestDist = d; best = id; }
       });
 
-    } catch(e) {
-      log('ERRO fetch: ' + e.message, 'err');
-    }
+      if (best) {
+        // Update existing
+        candidates[best].px = px;
+        candidates[best].py = py;
+        candidates[best].r  = r;
+        candidates[best].frames++;
+        candidates[best].lastSeen = now;
+        matched.add(best);
+      } else {
+        // New candidate
+        const id = 'c' + (++detectionId);
+        candidates[id] = { px, py, r, frames: 1, lastSeen: now };
+        matched.add(id);
+      }
+    });
 
-    isProcessing = false;
+    // Remove candidates not seen recently
+    Object.keys(candidates).forEach(id => {
+      if (now - candidates[id].lastSeen > DISAPPEAR_MS) {
+        delete candidates[id];
+      }
+    });
+
+    // Promote stable candidates to confirmed detections
+    Object.keys(candidates).forEach(id => {
+      const c = candidates[id];
+      if (c.frames >= CONFIRM_FRAMES && !confirmed[id]) {
+        confirmed[id] = true;
+        showDetection(id, c.px, c.py, c.r);
+      }
+    });
+
+    // Draw overlay
+    drawOverlay();
   }
 
-  function addDetection(px, py, radius, confidence) {
-    const id = ++detectionId;
-    const r  = Math.max(Math.min(radius * 1.5, 110), 36);
-    detections.push({ id, px, py });
+  // ── DRAW ──────────────────────────────────────────────────
+  function drawOverlay() {
+    ctx.clearRect(0, 0, overlay.width, overlay.height);
+
+    Object.keys(candidates).forEach(id => {
+      const c = candidates[id];
+      if (confirmed[id]) return; // already shown as card
+
+      // Draw pulsing circle for unconfirmed candidates
+      const alpha = Math.min(c.frames / CONFIRM_FRAMES, 1);
+      ctx.beginPath();
+      ctx.arc(c.px, c.py, c.r * 1.3, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(201, 168, 76, ${alpha * 0.8})`;
+      ctx.lineWidth   = 2;
+      ctx.stroke();
+
+      // Label
+      ctx.fillStyle = `rgba(201, 168, 76, ${alpha})`;
+      ctx.font      = '11px DM Mono, monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('⛳ A verificar...', c.px, c.py - c.r * 1.3 - 8);
+    });
+  }
+
+  // ── SOUND ─────────────────────────────────────────────────
+  function playDetectionSound() {
+    try {
+      const ac = new (window.AudioContext || window.webkitAudioContext)();
+      [[880, 0], [1100, 0.15]].forEach(([freq, delay]) => {
+        const osc = ac.createOscillator();
+        const gain = ac.createGain();
+        osc.connect(gain); gain.connect(ac.destination);
+        osc.type = "sine";
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0, ac.currentTime + delay);
+        gain.gain.linearRampToValueAtTime(0.35, ac.currentTime + delay + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + delay + 0.45);
+        osc.start(ac.currentTime + delay);
+        osc.stop(ac.currentTime + delay + 0.5);
+      });
+    } catch(e) {}
+  }
+
+  // ── SHOW DETECTION CARD ───────────────────────────────────
+  function showDetection(cid, px, py, radius) {
+    const id = 'det-' + cid;
+    if (document.getElementById(id)) return;
+
+    const r = Math.max(Math.min(radius * 1.8, 100), 36);
     stats.detected++;
     updateStats();
+    playDetectionSound();
 
     const container = document.getElementById('cameraContainer');
     const rect = container.getBoundingClientRect();
     const cpx = Math.max(r, Math.min(px, rect.width  - r));
-    const cpy = Math.max(r, Math.min(py, rect.height - r - 90));
+    const cpy = Math.max(r + 10, Math.min(py, rect.height - r - 80));
 
     const layer = document.getElementById('detectionsLayer');
     const el = document.createElement('div');
     el.className = 'detection-card';
-    el.id = `det-${id}`;
+    el.id = id;
     el.style.left = cpx + 'px';
     el.style.top  = cpy + 'px';
+
     el.innerHTML = `
-      <div class="detection-label">⛳ Bola de golfe ${confidence}%</div>
-      <div class="detection-ring" style="width:${r*2}px;height:${r*2}px;"></div>
       <div class="detection-actions">
         <div class="btn-wrap">
-          <button class="btn-confirm" onclick="confirmDetection(${id})">✓</button>
+          <button class="btn-confirm" onclick="confirmDet('${cid}')">✓</button>
           <div class="btn-label">É bola</div>
         </div>
         <div class="btn-wrap">
-          <button class="btn-reject" onclick="rejectDetection(${id})">✕</button>
+          <button class="btn-reject" onclick="rejectDet('${cid}')">✕</button>
           <div class="btn-label">Não é</div>
         </div>
       </div>`;
+
     layer.appendChild(el);
     updatePending();
-    setTimeout(() => removeDetection(id, false), AUTO_REMOVE);
+
+    // Auto-remove if not answered
+    setTimeout(() => removeDet(cid, false), AUTO_REMOVE_MS);
   }
 
-  function confirmDetection(id) {
-    stats.found++; showToast('⛳ Bola confirmada!', 'success');
-    removeDetection(id, true); updateStats();
+  function confirmDet(cid) {
+    stats.found++;
+    showToast('⛳ Bola confirmada!', 'success');
+    removeDet(cid, true);
+    updateStats();
   }
-  function rejectDetection(id) {
-    stats.rejected++; showToast('✕ Não é uma bola', 'reject');
-    removeDetection(id, true); updateStats();
+
+  function rejectDet(cid) {
+    stats.rejected++;
+    showToast('✕ Não é uma bola', 'reject');
+    removeDet(cid, true);
+    updateStats();
   }
-  function removeDetection(id, animate) {
-    const el = document.getElementById(`det-${id}`);
+
+  function removeDet(cid, animate) {
+    delete confirmed[cid];
+    delete candidates[cid];
+    const el = document.getElementById('det-' + cid);
     if (!el) return;
-    detections = detections.filter(d => d.id !== id);
     if (animate) {
-      el.style.transition = 'transform 0.25s, opacity 0.25s';
+      el.style.transition = 'transform 0.2s, opacity 0.2s';
       el.style.transform = 'translate(-50%, -50%) scale(0)';
       el.style.opacity = '0';
-      setTimeout(() => el.remove(), 260);
+      setTimeout(() => el.remove(), 220);
     } else { el.remove(); }
     updatePending();
   }
+
+  function clearAllDetections() {
+    candidates = {};
+    confirmed  = {};
+    document.getElementById('detectionsLayer').innerHTML = '';
+    updatePending();
+  }
+
+  // ── UI HELPERS ────────────────────────────────────────────
+  function setStatus(text, type) {
+    const p = document.getElementById('statusPill');
+    p.textContent = text;
+    p.className = 'status-pill ' + (type || '');
+  }
+
+  function setLoading(title, sub) {
+    document.getElementById('loadingText').innerHTML = `<strong>${title}</strong>${sub}`;
+  }
+
   function updateStats() {
     document.getElementById('countFound').textContent    = stats.found;
     document.getElementById('countRejected').textContent = stats.rejected;
     document.getElementById('countDetected').textContent = stats.detected;
   }
+
   function updatePending() {
-    document.getElementById('countPending').textContent = detections.length;
+    document.getElementById('countPending').textContent = Object.keys(confirmed).length;
   }
+
   function showToast(msg, type) {
     const t = document.getElementById('toast');
-    t.textContent = msg; t.className = `toast ${type} show`;
+    t.textContent = msg;
+    t.className = `toast ${type} show`;
     setTimeout(() => { t.className = 'toast'; }, 2500);
   }
 </script>
